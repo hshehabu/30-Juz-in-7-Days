@@ -96,6 +96,15 @@ class ChallengeNotifier extends StateNotifier<ChallengeState> {
     }
   }
 
+  Future<void> resetToTraditionalSchedule() async {
+    try {
+      final updated = await repository.resetToTraditionalSchedule();
+      state = state.copyWith(challenge: updated);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+    }
+  }
+
   Future<void> restartCurrentChallenge() async {
     state = state.copyWith(isLoading: true);
     try {
@@ -150,6 +159,16 @@ class ChallengeNotifier extends StateNotifier<ChallengeState> {
       state = state.copyWith(challenge: refreshed);
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
+    }
+  }
+
+  Future<void> rescheduleReminders() async {
+    final current = state.challenge;
+    if (current != null && storageService.isReminderEnabled && !current.isCompleted) {
+      await updateReminderSettings(
+        enabled: true,
+        reminderTime: current.reminderTime,
+      );
     }
   }
 

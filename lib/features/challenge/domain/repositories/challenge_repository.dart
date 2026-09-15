@@ -21,6 +21,9 @@ abstract class ChallengeRepository {
   /// Redistributes remaining uncompleted portions across remaining days
   Future<Challenge> adjustRemainingPlan(List<DayPortion> updatedPortions);
 
+  /// Resets portions to the authentic traditional 7-part schedule while preserving completion status
+  Future<Challenge> resetToTraditionalSchedule();
+
   /// Restarts the current challenge back to Day 1
   Future<Challenge> restartCurrentChallenge();
 

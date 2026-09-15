@@ -123,24 +123,34 @@ class ProgressPage extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.brassGold.withValues(alpha: 0.09),
+                  color: challenge.isAllPortionsCompleted
+                      ? AppColors.brassGold.withValues(alpha: 0.09)
+                      : AppColors.parchmentLight,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.brassGold.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: challenge.isAllPortionsCompleted
+                        ? AppColors.brassGold.withValues(alpha: 0.4)
+                        : AppColors.softSand,
+                  ),
                 ),
                 child: Column(
                   children: [
                     Text(
                       challenge.isAllPortionsCompleted
-                          ? 'Alhamdulillah 🤍 Khatmah Complete'
-                          : 'Challenge Completed',
-                      style: AppTypography.appBarTitle(AppColors.brassGoldDark),
+                          ? 'Alhamdulillah Khatmah Complete'
+                          : '7-Day Khatmah Period Ended',
+                      style: AppTypography.appBarTitle(
+                        challenge.isAllPortionsCompleted
+                            ? AppColors.brassGoldDark
+                            : AppColors.deepBrown,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       challenge.isAllPortionsCompleted
                           ? 'You successfully recited all seven portions of the Qur\'an.'
-                          : 'You completed $completedCount of 7 daily portions.',
+                          : 'The 7-day challenge period ended. You completed $completedCount of 7 daily portions.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: AppColors.deepBrown,
                       ),
@@ -149,7 +159,11 @@ class ProgressPage extends ConsumerWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: onStartNewKhatmah,
-                      child: const Text('Start Another 7-Day Khatmah'),
+                      child: Text(
+                        challenge.isAllPortionsCompleted
+                            ? 'Start Another 7-Day Khatmah'
+                            : 'Start a New 7-Day Khatmah',
+                      ),
                     ),
                   ],
                 ),
@@ -233,16 +247,20 @@ class ProgressPage extends ConsumerWidget {
     switch (status) {
       case DayStatus.completed:
         borderColor = AppColors.brassGold;
+        bgColor = AppColors.cardSurface;
         statusBadge = Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: AppColors.brassGold.withValues(alpha: 0.12),
+            color: AppColors.brassGold.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: AppColors.brassGold.withValues(alpha: 0.5),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check, size: 13, color: AppColors.brassGold),
+              const Icon(Icons.check, size: 13, color: AppColors.brassGoldDark),
               const SizedBox(width: 4),
               Text(
                 'Completed',
@@ -326,7 +344,7 @@ class ProgressPage extends ConsumerWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: borderColor,
-            width: status == DayStatus.today ? 1.5 : 1.0,
+            width: (status == DayStatus.today || status == DayStatus.completed) ? 1.5 : 1.0,
           ),
         ),
         child: Row(
@@ -338,25 +356,34 @@ class ProgressPage extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: status == DayStatus.today
                     ? AppColors.brassGold
-                    : AppColors.parchment,
+                    : (status == DayStatus.completed
+                        ? AppColors.brassGold.withValues(alpha: 0.15)
+                        : AppColors.parchment),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: status == DayStatus.today
+                  color: (status == DayStatus.today || status == DayStatus.completed)
                       ? AppColors.brassGold
                       : AppColors.softSand,
+                  width: status == DayStatus.completed ? 1.5 : 1.0,
                 ),
               ),
               alignment: Alignment.center,
-              child: Text(
-                '${portion.dayNumber}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: status == DayStatus.today
-                      ? AppColors.textLight
-                      : AppColors.deepBrown,
-                ),
-              ),
+              child: status == DayStatus.completed
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: AppColors.brassGoldDark,
+                      size: 20,
+                    )
+                  : Text(
+                      '${portion.dayNumber}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: status == DayStatus.today
+                            ? AppColors.textLight
+                            : AppColors.deepBrown,
+                      ),
+                    ),
             ),
             const SizedBox(width: 14),
 
@@ -398,9 +425,11 @@ class ProgressPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.softSand,
+              color: status == DayStatus.completed
+                  ? AppColors.brassGold
+                  : AppColors.softSand,
               size: 20,
             ),
           ],

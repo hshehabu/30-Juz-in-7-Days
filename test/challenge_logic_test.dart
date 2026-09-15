@@ -95,6 +95,74 @@ void main() {
       expect(challenge.isBehindSchedule, true); // Day 2 was missed
       expect(challenge.missedPortionsCount, 1);
       expect(challenge.isAllPortionsCompleted, false);
+      expect(challenge.isActive, true);
+      expect(challenge.isExpired, false);
+    });
+
+    test('Expired challenge with incomplete portions has isExpired true and isBehindSchedule false', () {
+      final start = AppDateUtils.dateOnly(DateTime.now().subtract(const Duration(days: 9))); // Today is Day 10
+      final end = start.add(const Duration(days: 6));
+
+      final portions = List.generate(7, (i) {
+        return DayPortion(
+          dayNumber: i + 1,
+          startSurah: 'SurahStart',
+          endSurah: 'SurahEnd',
+          startSurahAr: 'البداية',
+          endSurahAr: 'النهاية',
+          surahCount: 5,
+          isCompleted: false, // 0 completed
+        );
+      });
+
+      final challenge = Challenge(
+        id: 'test_expired',
+        startDate: start,
+        endDate: end,
+        portions: portions,
+        reminderHour: 19,
+        reminderMinute: 0,
+        createdAt: start,
+      );
+
+      expect(challenge.currentDayNumber, 10);
+      expect(challenge.isActive, false);
+      expect(challenge.isExpired, true);
+      expect(challenge.isAllPortionsCompleted, false);
+      expect(challenge.isBehindSchedule, false); // Expired challenge is NOT behind schedule
+      expect(challenge.daysRemaining, 0);
+    });
+
+    test('Completed challenge has isAllPortionsCompleted true and isBehindSchedule false', () {
+      final start = AppDateUtils.dateOnly(DateTime.now().subtract(const Duration(days: 4)));
+      final end = start.add(const Duration(days: 6));
+
+      final portions = List.generate(7, (i) {
+        return DayPortion(
+          dayNumber: i + 1,
+          startSurah: 'SurahStart',
+          endSurah: 'SurahEnd',
+          startSurahAr: 'البداية',
+          endSurahAr: 'النهاية',
+          surahCount: 5,
+          isCompleted: true, // All 7 completed
+        );
+      });
+
+      final challenge = Challenge(
+        id: 'test_completed',
+        startDate: start,
+        endDate: end,
+        portions: portions,
+        reminderHour: 19,
+        reminderMinute: 0,
+        createdAt: start,
+      );
+
+      expect(challenge.isAllPortionsCompleted, true);
+      expect(challenge.isActive, false);
+      expect(challenge.isExpired, false);
+      expect(challenge.isBehindSchedule, false);
     });
 
     test('Challenge model serializes and deserializes accurately', () {

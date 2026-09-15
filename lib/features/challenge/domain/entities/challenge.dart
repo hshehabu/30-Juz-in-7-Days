@@ -41,15 +41,15 @@ class Challenge {
     return day;
   }
 
-  /// Whether the challenge is currently active (today is within the 7-day window)
+  /// Whether the challenge is currently active (today is within the 7-day window and not all completed)
   bool get isActive {
     final day = currentDayNumber;
-    return day >= 1 && day <= 7 && !isCompleted;
+    return day >= 1 && day <= 7 && !isAllPortionsCompleted;
   }
 
-  /// Whether the 7 calendar days have elapsed
+  /// Whether the 7 calendar days have elapsed without completing all portions
   bool get isExpired {
-    return currentDayNumber > 7;
+    return currentDayNumber > 7 && !isAllPortionsCompleted;
   }
 
   /// Number of completed daily portions (0..7)
@@ -90,12 +90,12 @@ class Challenge {
     return portions.isNotEmpty ? portions.first : null;
   }
 
-  /// True if any past day (day < currentDayNumber) is incomplete
+  /// True only if challenge is active and any past day (day < currentDayNumber) is incomplete
   bool get isBehindSchedule {
+    if (!isActive) return false;
     final day = currentDayNumber;
     if (day <= 1) return false;
-    final maxPastDay = day > 7 ? 7 : day - 1;
-    return portions.any((p) => p.dayNumber <= maxPastDay && !p.isCompleted);
+    return portions.any((p) => p.dayNumber < day && !p.isCompleted);
   }
 
   /// Number of incomplete past portions

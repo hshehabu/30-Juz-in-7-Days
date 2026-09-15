@@ -21,10 +21,30 @@ void notificationTapBackground(NotificationResponse response) async {
 
 class NotificationService {
   static const String markCompletedActionId = 'mark_completed';
-  static const String _channelId = 'khatmah_reminders';
+  static const String _channelId = 'khatmah_reminders_v2';
   static const String _channelName = 'Daily Khatmah Reminders';
   static const String _channelDesc =
       'Gentle daily reminders for your 7-day Qur\'an completion';
+
+  /// The 3 fixed drop hours per day: morning (6 AM), noon (12 PM), evening (6 PM)
+  static const List<int> dropHours = [6, 12, 18];
+
+  /// Distinct notification titles for each drop
+  static const List<String> _dropTitles = [
+    'Your morning portion is waiting \u{1F4D6}',
+    'Your Qur\'an portion \u2014 midday reminder',
+    'Your evening portion is waiting \u{1F319}',
+  ];
+
+  /// Distinct body copy tones: fresh start, midday check-in, evening reminder
+  static const List<String> _dropBodies = [
+    'A fresh morning. Begin with bismillah and open your portion.',
+    'Midday check-in \u2014 have you read your portion today?',
+    'An evening reminder. Don\'t let the day end without completing your portion.',
+  ];
+
+  /// Notification ID for a given day and drop: day1→[10,11,12] ... day7→[70,71,72]
+  static int notifId(int dayNumber, int dropIndex) => dayNumber * 10 + dropIndex;
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -115,8 +135,9 @@ class NotificationService {
       _channelId,
       _channelName,
       description: _channelDesc,
-      importance: Importance.high,
+      importance: Importance.max,
       playSound: true,
+      enableVibration: true,
     );
 
     await _plugin
@@ -131,6 +152,25 @@ class NotificationService {
     _onMarkCompleted = handler;
   }
 
+  /// Checks if the device allows scheduling exact alarms (Android 12+)
+  Future<bool> canScheduleExact() async {
+    if (!_initialized) await initialize();
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImpl == null) return true;
+    return await androidImpl.canScheduleExactNotifications() ?? false;
+  }
+
+  /// Requests the user to allow exact alarms in system settings (Android 13/14+)
+  Future<bool> requestExactAlarmsPermission() async {
+    if (!_initialized) await initialize();
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImpl == null) return true;
+    final granted = await androidImpl.requestExactAlarmsPermission();
+    return granted ?? false;
+  }
+
   Future<bool> requestPermissions() async {
     if (!_initialized) await initialize();
 
@@ -139,7 +179,7 @@ class NotificationService {
     final androidGranted =
         await androidImpl?.requestNotificationsPermission() ?? false;
 
-    // Also request exact alarm permission if available on Android 13/14+
+    // Also prompt exact alarm permission if available on Android 13/14+
     try {
       await androidImpl?.requestExactAlarmsPermission();
     } catch (_) {
@@ -158,22 +198,19 @@ class NotificationService {
     return androidGranted || iosGranted;
   }
 
-  /// Schedules daily notifications for the 7 days of the challenge starting at [startDate]
-  /// at the given [reminderTime].
+  /// Schedules 3 notifications per day (6 AM, 12 PM, 6 PM) for all 7 days.
+  /// Total: 21 scheduled notifications. IDs: dayNumber*10+dropIndex.
+  /// Any day in [completedDays] is skipped.
   Future<void> scheduleChallengeReminders({
     required DateTime startDate,
-    required TimeOfDay reminderTime,
     required List<DefaultPortionData> schedule,
+    Set<int> completedDays = const {},
   }) async {
     if (!_initialized) await initialize();
 
-    // Cancel existing scheduled notifications
     await cancelAll();
 
-    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    final canExact =
-        await androidImpl?.canScheduleExactNotifications() ?? false;
+    final canExact = await canScheduleExact();
     final scheduleMode = canExact
         ? AndroidScheduleMode.exactAllowWhileIdle
         : AndroidScheduleMode.inexactAllowWhileIdle;
@@ -182,59 +219,83 @@ class NotificationService {
 
     for (int i = 0; i < schedule.length; i++) {
       final portion = schedule[i];
-      final scheduledDate = tz.TZDateTime(
-        tz.local,
-        startDate.year,
-        startDate.month,
-        startDate.day + i,
-        reminderTime.hour,
-        reminderTime.minute,
-      );
+      if (completedDays.contains(portion.dayNumber)) {
+        continue; // Skip already completed days
+      }
 
-      // Only schedule if the date/time is in the future
-      if (scheduledDate.isAfter(tzNow)) {
-        final id = 100 + portion.dayNumber;
+      final targetDate = startDate.add(Duration(days: i));
 
-        await _plugin.zonedSchedule(
-          id,
-          'Your Qur\'an portion is waiting 📖',
-          'Day ${portion.dayNumber} of 7 — ${portion.rangeDisplay}',
-          scheduledDate,
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channelId,
-              _channelName,
-              channelDescription: _channelDesc,
-              importance: Importance.high,
-              priority: Priority.high,
-              icon: '@mipmap/ic_launcher',
-              actions: <AndroidNotificationAction>[
-                AndroidNotificationAction(
-                  markCompletedActionId,
-                  'Mark as completed',
-                  showsUserInterface: true,
-                  cancelNotification: true,
-                ),
-              ],
-            ),
-            iOS: DarwinNotificationDetails(
-              sound: 'default',
-              categoryIdentifier: 'khatmah_reminder_category',
-            ),
-          ),
-          payload: portion.dayNumber.toString(),
-          androidScheduleMode: scheduleMode,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
+      for (int d = 0; d < dropHours.length; d++) {
+        final scheduledDate = tz.TZDateTime(
+          tz.local,
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          dropHours[d],
+          0,
+          0,
         );
+
+        // Only schedule future drop times
+        if (scheduledDate.isAfter(tzNow)) {
+          await _plugin.zonedSchedule(
+            notifId(portion.dayNumber, d),
+            _dropTitles[d],
+            '${_dropBodies[d]} — Day ${portion.dayNumber}: ${portion.rangeDisplay}',
+            scheduledDate,
+            _buildNotificationDetails(),
+            payload: portion.dayNumber.toString(),
+            androidScheduleMode: scheduleMode,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        }
       }
     }
   }
 
-  /// Cancels reminder for a specific day when marked complete
+  /// Kill switch: cancels all 3 drop notifications for a given day.
   Future<void> cancelDayReminder(int dayNumber) async {
     if (!_initialized) await initialize();
-    await _plugin.cancel(100 + dayNumber);
+    for (int d = 0; d < dropHours.length; d++) {
+      await _plugin.cancel(notifId(dayNumber, d));
+    }
+  }
+
+  /// Immediately shows a drop-specific reminder for a portion.
+  Future<void> showDropReminderNow({
+    required int dayNumber,
+    required String rangeDisplay,
+    required int dropIndex,
+  }) async {
+    if (!_initialized) await initialize();
+    final safeIndex = dropIndex.clamp(0, dropHours.length - 1);
+    await _plugin.show(
+      notifId(dayNumber, safeIndex),
+      _dropTitles[safeIndex],
+      '${_dropBodies[safeIndex]} — Day $dayNumber: $rangeDisplay',
+      _buildNotificationDetails(),
+      payload: dayNumber.toString(),
+    );
+  }
+
+  /// Legacy compatibility — shows the drop that best matches the current hour.
+  Future<void> showDailyReminderNow({
+    required int dayNumber,
+    required String rangeDisplay,
+  }) async {
+    final now = DateTime.now();
+    int dropIndex = 0;
+    if (now.hour >= dropHours[2]) {
+      dropIndex = 2;
+    } else if (now.hour >= dropHours[1]) {
+      dropIndex = 1;
+    }
+    await showDropReminderNow(
+      dayNumber: dayNumber,
+      rangeDisplay: rangeDisplay,
+      dropIndex: dropIndex,
+    );
   }
 
   /// Sends immediate test notification
@@ -249,9 +310,11 @@ class NotificationService {
           _channelId,
           _channelName,
           channelDescription: _channelDesc,
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: Importance.max,
+          priority: Priority.max,
           icon: '@mipmap/ic_launcher',
+          playSound: true,
+          enableVibration: true,
           actions: <AndroidNotificationAction>[
             AndroidNotificationAction(
               markCompletedActionId,
@@ -275,7 +338,7 @@ class NotificationService {
     if (!_initialized) await initialize();
     await _plugin.show(
       777,
-      'Alhamdulillah 🤍',
+      'Alhamdulillah',
       'You have completed your 7-day Qur\'an khatmah!',
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -296,7 +359,8 @@ class NotificationService {
     await _plugin.cancelAll();
   }
 
-  /// Handles marking day completed in background isolate
+  /// Handles marking day completed in background isolate.
+  /// Also cancels all remaining drop notifications for the day (kill switch).
   static Future<void> markDayCompletedInBackground(int dayNumber) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -323,8 +387,53 @@ class NotificationService {
         data['isCompleted'] = allDone;
         await storage.saveActiveChallengeJson(jsonEncode(data));
       }
+
+      // Kill switch: cancel remaining drop notifications for today
+      try {
+        final plugin = FlutterLocalNotificationsPlugin();
+        const androidSettings =
+            AndroidInitializationSettings('@mipmap/ic_launcher');
+        await plugin.initialize(
+          const InitializationSettings(android: androidSettings),
+        );
+        for (int d = 0; d < dropHours.length; d++) {
+          await plugin.cancel(notifId(dayNumber, d));
+        }
+      } catch (_) {
+        // Background cancellation is best-effort
+      }
     } catch (_) {
       // Background execution error suppressed
     }
+  }
+
+  // ── Private helpers ─────────────────────────────────────────────────────────
+
+  NotificationDetails _buildNotificationDetails() {
+    return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDesc,
+        importance: Importance.max,
+        priority: Priority.max,
+        icon: '@mipmap/ic_launcher',
+        playSound: true,
+        enableVibration: true,
+        onlyAlertOnce: true,
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            markCompletedActionId,
+            'Mark as completed',
+            showsUserInterface: true,
+            cancelNotification: true,
+          ),
+        ],
+      ),
+      iOS: DarwinNotificationDetails(
+        sound: 'default',
+        categoryIdentifier: 'khatmah_reminder_category',
+      ),
+    );
   }
 }

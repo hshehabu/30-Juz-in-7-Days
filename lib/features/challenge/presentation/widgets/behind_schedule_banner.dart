@@ -81,6 +81,14 @@ class BehindScheduleBanner extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Text(
+            'Adjusting will spread your remaining Surahs evenly across the days you have left.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );

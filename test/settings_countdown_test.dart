@@ -44,5 +44,13 @@ void main() {
       expect(diff.inMinutes.remainder(60), 0);
       expect(target.day, 7);
     });
+
+    test('Identifies Due now condition when current time matches reminder minute', () {
+      final now = DateTime(2026, 9, 6, 16, 30, 15); // 4:30:15 PM
+      final reminder = const TimeOfDay(hour: 16, minute: 30); // 4:30 PM
+
+      final isDueNow = now.hour == reminder.hour && now.minute == reminder.minute;
+      expect(isDueNow, isTrue);
+    });
   });
 }

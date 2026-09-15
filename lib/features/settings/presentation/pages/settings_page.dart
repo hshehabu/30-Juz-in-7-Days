@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/khatmah_constants.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -16,38 +17,74 @@ class SettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage>
+    with WidgetsBindingObserver {
   Timer? _tickerTimer;
+  bool _canScheduleExact = true;
 
   @override
   void initState() {
     super.initState();
-    _tickerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    WidgetsBinding.instance.addObserver(this);
+    _checkExactAlarmPermission();
+    _tickerTimer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tickerTimer?.cancel();
     super.dispose();
   }
 
-  String _formatCountdown(TimeOfDay reminderTime) {
-    final now = DateTime.now();
-    var target = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      reminderTime.hour,
-      reminderTime.minute,
-    );
-    if (!target.isAfter(now)) {
-      target = target.add(const Duration(days: 1));
+  Future<void> _checkExactAlarmPermission() async {
+    final notifService = ref.read(notificationServiceProvider);
+    final canExact = await notifService.canScheduleExact();
+    if (mounted && canExact != _canScheduleExact) {
+      final wasFalse = !_canScheduleExact && canExact;
+      setState(() {
+        _canScheduleExact = canExact;
+      });
+      // Only reschedule if the permission was freshly granted from settings
+      if (wasFalse) {
+        ref.read(challengeStateProvider.notifier).rescheduleReminders();
+      }
     }
-    final diff = target.difference(now);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkExactAlarmPermission();
+    }
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    // Pure UI tick to refresh the countdown display
+    setState(() {});
+  }
+
+  /// Returns the countdown to the next drop time from [6:00, 12:00, 18:00].
+  String _formatCountdown() {
+    final now = DateTime.now();
+    DateTime? nextDrop;
+    for (final dropHour in NotificationService.dropHours) {
+      final candidate = DateTime(
+          now.year, now.month, now.day, dropHour, 0, 0);
+      if (candidate.isAfter(now)) {
+        nextDrop = candidate;
+        break;
+      }
+    }
+    // All drops passed today — next is 6 AM tomorrow
+    nextDrop ??= DateTime(
+        now.year, now.month, now.day + 1, NotificationService.dropHours[0], 0, 0);
+
+    final isNow = now.hour == nextDrop.hour && now.minute == nextDrop.minute;
+    if (isNow) return 'Due now \u{1F514}';
+
+    final diff = nextDrop.difference(now);
     final hours = diff.inHours;
     final minutes = diff.inMinutes.remainder(60);
     final seconds = diff.inSeconds.remainder(60);
@@ -58,67 +95,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
     } else {
       return '${seconds}s';
-    }
-  }
-
-  Future<void> _sendTestNotification(BuildContext context) async {
-    try {
-      final notifService = ref.read(notificationServiceProvider);
-      final challenge = ref.read(challengeStateProvider).challenge;
-      final currentDay = challenge?.displayDayNumber ?? 1;
-      await notifService.showTestNotification(dayNumber: currentDay);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Test notification sent! Pull down your notification shade to see the "Mark as completed" button.',
-            ),
-            backgroundColor: AppColors.brassGoldDark,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not send test notification: $e'),
-            backgroundColor: AppColors.statusMissed,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _pickReminderTime(
-    BuildContext context,
-    TimeOfDay current,
-    bool isEnabled,
-  ) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: current,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.brassGold,
-              onPrimary: AppColors.textLight,
-              surface: AppColors.parchmentLight,
-              onSurface: AppColors.deepBrown,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      await ref
-          .read(challengeStateProvider.notifier)
-          .updateReminderSettings(enabled: isEnabled, reminderTime: picked);
     }
   }
 
@@ -174,6 +150,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               widget.onStartNewKhatmah();
             },
             child: const Text('Start New'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmResetSchedule(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Reset Schedule?',
+          style: AppTypography.appBarTitle(AppColors.deepBrown),
+        ),
+        content: const Text(
+          'This will restore the authentic 7-day traditional schedule (3, 5, 7, 9, 11, 13, Mufassal) while preserving your completed days.',
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(challengeStateProvider.notifier).resetToTraditionalSchedule();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Schedule restored to authentic traditional portions.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Reset Schedule'),
           ),
         ],
       ),
@@ -244,43 +254,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   if (isReminderOn) ...[
                     const Divider(height: 1),
-                    ListTile(
-                      onTap: () => _pickReminderTime(
-                        context,
-                        currentReminderTime,
-                        isReminderOn,
-                      ),
-                      title: Text(
-                        'Reminder Time',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.parchment,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.softSand),
-                        ),
-                        child: Text(
-                          AppDateUtils.formatTimeOfDay(currentReminderTime),
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: AppColors.brassGoldDark,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    // Countdown display below reminder time
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
+                        vertical: 14,
                       ),
                       child: Row(
                         children: [
@@ -293,8 +270,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           Expanded(
                             child: Text(
                               'Next reminder in',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textMuted,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.deepBrown,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -310,7 +287,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               border: Border.all(color: AppColors.softSand),
                             ),
                             child: Text(
-                              _formatCountdown(currentReminderTime),
+                              _formatCountdown(),
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: AppColors.brassGoldDark,
                                 fontWeight: FontWeight.w700,
@@ -322,34 +299,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ),
                         ],
                       ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      dense: true,
-                      leading: const Icon(
-                        Icons.notifications_active_outlined,
-                        size: 20,
-                        color: AppColors.brassGold,
-                      ),
-                      title: Text(
-                        'Send Test Notification',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.deepBrown,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Confirm notifications trigger on your device',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      trailing: const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                      onTap: () => _sendTestNotification(context),
                     ),
                   ],
                 ],
@@ -390,7 +339,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         const Divider(height: 20),
                         _buildInfoItem(
                           'Progress',
-                          'Day ${challenge.displayDayNumber} of 7 • ${challenge.completedPortionsCount}/7 completed',
+                          challenge.isExpired
+                              ? 'Ended • ${challenge.completedPortionsCount}/7 completed'
+                              : 'Day ${challenge.displayDayNumber} of 7 • ${challenge.completedPortionsCount}/7 completed',
                           theme,
                         ),
                       ],
@@ -422,6 +373,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
               ],
             ),
+            if (challenge != null &&
+                challenge.portions.any((p) => p.isAdjusted)) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () => _confirmResetSchedule(context),
+                  icon: const Icon(Icons.restore_rounded, size: 18),
+                  label: const Text('Reset Schedule to Traditional (Fami bi Shawq)'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.brassGoldDark,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 28),
 
             // Section 3: About & Religious Basis
@@ -486,14 +452,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    KhatmahConstants.hadithExplanation,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textMuted,
-                      height: 1.4,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -506,7 +464,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Widget _buildInfoItem(String label, String value, ThemeData theme) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -514,11 +472,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             color: AppColors.textMuted,
           ),
         ),
-        Text(
-          value,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.deepBrown,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.deepBrown,
+            ),
           ),
         ),
       ],

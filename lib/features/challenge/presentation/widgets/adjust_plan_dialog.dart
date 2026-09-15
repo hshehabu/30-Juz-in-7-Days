@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/khatmah_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/challenge.dart';
@@ -7,23 +8,27 @@ import '../../domain/entities/day_portion.dart';
 class AdjustPlanDialog extends StatefulWidget {
   final Challenge challenge;
   final Function(List<DayPortion> updatedPortions) onConfirm;
+  final VoidCallback? onResetToTraditional;
 
   const AdjustPlanDialog({
     super.key,
     required this.challenge,
     required this.onConfirm,
+    this.onResetToTraditional,
   });
 
   static Future<void> show(
     BuildContext context, {
     required Challenge challenge,
     required Function(List<DayPortion> updatedPortions) onConfirm,
+    VoidCallback? onResetToTraditional,
   }) {
     return showDialog(
       context: context,
       builder: (_) => AdjustPlanDialog(
         challenge: challenge,
         onConfirm: onConfirm,
+        onResetToTraditional: onResetToTraditional,
       ),
     );
   }
@@ -34,6 +39,7 @@ class AdjustPlanDialog extends StatefulWidget {
 
 class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
   late List<DayPortion> _proposedPortions;
+  bool _canAdjust = true;
 
   @override
   void initState() {
@@ -45,46 +51,53 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
     final currentDay = widget.challenge.currentDayNumber;
     final portions = widget.challenge.portions;
 
-    // Days from currentDay up to 7
+    // If challenge expired or not active, adjustment cannot be performed
+    if (widget.challenge.isExpired || currentDay > 7 || currentDay < 1) {
+      _canAdjust = false;
+      _proposedPortions = List.from(portions);
+      return;
+    }
+
     final remainingDays = <int>[];
     for (int d = currentDay; d <= 7; d++) {
       remainingDays.add(d);
     }
 
-    // Incomplete portions
-    final incompletePortions = portions.where((p) => !p.isCompleted).toList();
-
-    if (remainingDays.isEmpty || incompletePortions.isEmpty) {
+    if (remainingDays.isEmpty) {
+      _canAdjust = false;
       _proposedPortions = List.from(portions);
       return;
     }
 
-    // Retain completed portions untouched
+    // Historical record: retain past days (< currentDay) as-is
     final result = <DayPortion>[];
     for (final p in portions) {
-      if (p.isCompleted || p.dayNumber < currentDay) {
+      if (p.dayNumber < currentDay) {
         result.add(p);
       }
     }
 
-    // Redistribute incomplete portions across remaining days
-    // If we have more incomplete portions than remaining days, combine the backlog
-    // into the remaining schedule smoothly
-    final totalIncomplete = incompletePortions.length;
+    // Determine which traditional blocks have already been completed
+    // in past days (days < currentDay)
+    final completedPastCount =
+        portions.where((p) => p.dayNumber < currentDay && p.isCompleted).length;
+
+    // Remaining traditional blocks to distribute
+    final unreadBlocks =
+        KhatmahConstants.traditionalSchedule.sublist(completedPastCount);
+
+    final totalUnread = unreadBlocks.length;
     final totalRemainingDays = remainingDays.length;
 
-    int incompleteIndex = 0;
+    int blockIndex = 0;
     for (int i = 0; i < totalRemainingDays; i++) {
       final dayNumber = remainingDays[i];
-      // Calculate how many portions to assign to this day
-      final portionsForThisDay =
-          ((totalIncomplete - incompleteIndex) / (totalRemainingDays - i))
-              .ceil();
-      final endIdx =
-          (incompleteIndex + portionsForThisDay).clamp(0, totalIncomplete);
+      final blocksForThisDay =
+          ((totalUnread - blockIndex) / (totalRemainingDays - i)).ceil();
+      final endIdx = (blockIndex + blocksForThisDay).clamp(0, totalUnread);
 
-      final assigned = incompletePortions.sublist(incompleteIndex, endIdx);
-      incompleteIndex = endIdx;
+      final assigned = unreadBlocks.sublist(blockIndex, endIdx);
+      blockIndex = endIdx;
 
       if (assigned.isNotEmpty) {
         final startSurah = assigned.first.startSurah;
@@ -92,6 +105,11 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
         final startSurahAr = assigned.first.startSurahAr;
         final endSurahAr = assigned.last.endSurahAr;
         final surahCount = assigned.fold(0, (sum, p) => sum + p.surahCount);
+
+        // Check if portion differs from default traditional schedule
+        final originalDefault = KhatmahConstants.traditionalSchedule[dayNumber - 1];
+        final isDifferent = startSurah != originalDefault.startSurah ||
+            endSurah != originalDefault.endSurah;
 
         result.add(
           DayPortion(
@@ -102,13 +120,12 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
             endSurahAr: endSurahAr,
             surahCount: surahCount,
             isCompleted: false,
-            isAdjusted: true,
+            isAdjusted: isDifferent,
           ),
         );
       }
     }
 
-    // Sort by day number
     result.sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
     _proposedPortions = result;
   }
@@ -117,6 +134,36 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentDay = widget.challenge.currentDayNumber;
+
+    if (!_canAdjust) {
+      return AlertDialog(
+        title: Text(
+          'Khatmah Concluded',
+          style: AppTypography.appBarTitle(AppColors.deepBrown),
+        ),
+        content: Text(
+          'Your 7-day challenge period has ended. The plan cannot be adjusted because there are no active days remaining.\n\nYou can start a new 7-day khatmah from the home or progress screen anytime.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.deepBrown,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          if (widget.onResetToTraditional != null)
+            TextButton(
+              onPressed: () {
+                widget.onResetToTraditional?.call();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Reset Schedule'),
+            ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      );
+    }
 
     return AlertDialog(
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -134,7 +181,7 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'We redistributed your unfinished portions evenly across the remaining days of your 7-day khatmah. Your completed days are not changed.',
+                'We redistributed your unread portions consecutively across the remaining days of your khatmah. Completed portions are preserved.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.deepBrown,
                   height: 1.4,
@@ -232,6 +279,14 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
         ),
       ),
       actions: [
+        if (widget.onResetToTraditional != null)
+          TextButton(
+            onPressed: () {
+              widget.onResetToTraditional!.call();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Reset to Traditional'),
+          ),
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),

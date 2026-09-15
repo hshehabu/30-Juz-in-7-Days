@@ -63,7 +63,6 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     if (storageService.isReminderEnabled) {
       await notificationService.scheduleChallengeReminders(
         startDate: start,
-        reminderTime: reminderTime,
         schedule: KhatmahConstants.traditionalSchedule,
       );
     }
@@ -149,6 +148,43 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
   }
 
   @override
+  Future<Challenge> resetToTraditionalSchedule() async {
+    final current = await localDataSource.getActiveChallenge();
+    if (current == null) {
+      throw StateError('No active challenge found');
+    }
+
+    final completedMap = {
+      for (final p in current.portions) p.dayNumber: p.isCompleted
+    };
+    final completedAtMap = {
+      for (final p in current.portions) p.dayNumber: p.completedAt
+    };
+
+    final traditionalPortions =
+        KhatmahConstants.traditionalSchedule.map((data) {
+      return DayPortion(
+        dayNumber: data.dayNumber,
+        startSurah: data.startSurah,
+        endSurah: data.endSurah,
+        startSurahAr: data.startSurahAr,
+        endSurahAr: data.endSurahAr,
+        surahCount: data.surahCount,
+        isCompleted: completedMap[data.dayNumber] ?? false,
+        completedAt: completedAtMap[data.dayNumber],
+        isAdjusted: false,
+      );
+    }).toList();
+
+    final updatedChallenge = current.copyWithModel(
+      portions: traditionalPortions,
+    );
+
+    await localDataSource.saveActiveChallenge(updatedChallenge);
+    return updatedChallenge;
+  }
+
+  @override
   Future<Challenge> restartCurrentChallenge() async {
     final current = await localDataSource.getActiveChallenge();
     if (current == null) {
@@ -188,10 +224,14 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       await localDataSource.saveActiveChallenge(updatedChallenge);
 
       if (enabled && !current.isCompleted) {
+        final completedDays = current.portions
+            .where((p) => p.isCompleted)
+            .map((p) => p.dayNumber)
+            .toSet();
         await notificationService.scheduleChallengeReminders(
           startDate: current.startDate,
-          reminderTime: reminderTime,
           schedule: KhatmahConstants.traditionalSchedule,
+          completedDays: completedDays,
         );
       } else {
         await notificationService.cancelAll();

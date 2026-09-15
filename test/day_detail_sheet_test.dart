@@ -59,68 +59,65 @@ void main() {
   });
 
   testWidgets(
-      'Upcoming day portion displays "Mark Day 3 ahead of schedule" and opens confirmation',
+      'Upcoming day portion has no "Mark as completed" button rendered',
       (tester) async {
-    bool toggled = false;
-
     await tester.pumpWidget(
       buildSheetWrapper(
         DayDetailSheet(
           portion: testPortionDay3,
           portionDate: DateTime.now().add(const Duration(days: 2)),
           currentDayNumber: 1,
-          onToggleCompletion: () {
-            toggled = true;
-          },
+          onToggleCompletion: () {},
         ),
       ),
     );
 
-    expect(find.text('Mark Day 3 ahead of schedule'), findsOneWidget);
-
-    // Tap ahead of schedule button
-    await tester.tap(find.text('Mark Day 3 ahead of schedule'));
-    await tester.pumpAndSettle();
-
-    // Dialog should appear
-    expect(find.text('Mark ahead of schedule?'), findsOneWidget);
-    expect(find.text('Keep Upcoming'), findsOneWidget);
-    expect(find.text('Mark Completed'), findsOneWidget);
-
-    // Tap confirm in dialog
-    await tester.tap(find.text('Mark Completed'));
-    await tester.pumpAndSettle();
-
-    expect(toggled, isTrue);
+    // Button should be completely removed, not rendered
+    expect(find.text('Mark as completed'), findsNothing);
+    expect(find.byType(ElevatedButton), findsNothing);
   });
 
-  testWidgets('Missed past day portion displays "Catch up: Mark Day 1 completed"',
+  testWidgets(
+      'Missed past day portion has no "Mark as completed" button rendered',
       (tester) async {
-    bool toggled = false;
-
     await tester.pumpWidget(
       buildSheetWrapper(
         DayDetailSheet(
           portion: testPortionDay1,
           portionDate: DateTime.now().subtract(const Duration(days: 2)),
           currentDayNumber: 3,
-          onToggleCompletion: () {
-            toggled = true;
-          },
+          onToggleCompletion: () {},
         ),
       ),
     );
 
-    expect(find.text('Catch up: Mark Day 1 completed'), findsOneWidget);
     expect(find.text('Missed Portion'), findsOneWidget);
+    // Button should be completely removed, not rendered
+    expect(find.text('Mark as completed'), findsNothing);
+    expect(find.byType(ElevatedButton), findsNothing);
+  });
 
-    await tester.tap(find.text('Catch up: Mark Day 1 completed'));
-    await tester.pumpAndSettle();
+  testWidgets(
+      'Adjusted day portion renders without RenderFlex overflow on narrow screen',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-    expect(find.text('Catch up on Day 1?'), findsOneWidget);
-    await tester.tap(find.text('Mark Completed'));
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      buildSheetWrapper(
+        DayDetailSheet(
+          portion: testPortionDay1.copyWith(isAdjusted: true),
+          portionDate: DateTime.now(),
+          currentDayNumber: 1,
+          onToggleCompletion: () {},
+        ),
+      ),
+    );
 
-    expect(toggled, isTrue);
+    expect(tester.takeException(), isNull);
+    expect(find.text('Schedule Status'), findsOneWidget);
+    expect(find.text('Adjusted to fit remaining window'), findsOneWidget);
   });
 }

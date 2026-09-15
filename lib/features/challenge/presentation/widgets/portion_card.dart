@@ -93,8 +93,8 @@ class PortionCard extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: onMarkCompleted,
-                icon: const Icon(Icons.check_rounded, size: 20),
-                label: const Text('Mark as completed'),
+                icon: const Icon(Icons.menu_book_rounded, size: 20),
+                label: const Text('I\'ve read my portion today'),
               ),
             ),
           ] else ...[
@@ -119,7 +119,7 @@ class PortionCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Completed — Alhamdulillah 🤍',
+                      'Completed — Alhamdulillah',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: AppColors.brassGoldDark,
                         fontWeight: FontWeight.w700,

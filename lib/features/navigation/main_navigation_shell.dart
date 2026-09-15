@@ -24,12 +24,14 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   void _openStartNewKhatmahFlow() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => OnboardingFlowPage(
+        builder: (navContext) => OnboardingFlowPage(
           onCompleted: () {
-            Navigator.of(context).pop();
-            setState(() {
-              _currentIndex = 0;
-            });
+            Navigator.of(navContext).pop();
+            if (mounted) {
+              setState(() {
+                _currentIndex = 0;
+              });
+            }
           },
         ),
       ),

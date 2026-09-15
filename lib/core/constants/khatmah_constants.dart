@@ -109,6 +109,4 @@ class KhatmahConstants {
   static const String hadithSource = 'Sahih al-Bukhari 5052';
   static const String hadithText =
       'The Prophet ﷺ instructed ʿAbdullah ibn ʿAmr to recite the Qur\'an in seven days: "Read it in seven days, and do not exceed that."';
-  static const String hadithExplanation =
-      'Distinction: The seven-day completion is established in the prophetic Sunnah (Bukhari 5052). The particular 3-5-7-9-11-13-Mufassal division is a venerable traditional arrangement used by the early generations.';
 }

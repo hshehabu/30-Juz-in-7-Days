@@ -53,7 +53,7 @@ class ChallengeCompletedDialog extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Alhamdulillah 🤍',
+            'Alhamdulillah',
             style: AppTypography.appBarTitle(AppColors.brassGold),
             textAlign: TextAlign.center,
           ),
