@@ -31,7 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.5.1
   shared_preferences: ^2.2.3
   flutter_local_notifications: ^18.0.1

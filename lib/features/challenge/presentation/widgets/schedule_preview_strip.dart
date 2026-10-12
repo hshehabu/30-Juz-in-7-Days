@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/day_portion.dart';
@@ -29,7 +28,6 @@ class SchedulePreviewStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isAr = AppLanguage.isArabic(context);
 
     final completed =
         completedCount ?? portions.where((p) => p.isCompleted).length;
