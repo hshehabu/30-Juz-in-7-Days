@@ -1,4 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 
@@ -30,31 +33,36 @@ class ChallengeCompletedDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isAr = AppLanguage.isArabic(context);
 
     return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
-      contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.standardRadius),
+        side: const BorderSide(color: AppColors.mistGray),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(22, 24, 22, 8),
+      contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
+      actionsPadding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
       title: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: AppColors.brassGold.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.brassGold, width: 1.5),
+              color: AppColors.controlSurface,
+              borderRadius: BorderRadius.circular(AppColors.standardRadius),
+              border: Border.all(color: AppColors.mistGray, width: 1.0),
             ),
             child: const Icon(
               Icons.check_rounded,
-              color: AppColors.brassGold,
-              size: 32,
+              color: AppColors.ink,
+              size: 28,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
-            'Alhamdulillah',
-            style: AppTypography.appBarTitle(AppColors.brassGold),
+            LocaleKeys.completion_dialog.title.tr(),
+            style: AppTypography.appBarTitle(AppColors.signalBlack, isAr),
             textAlign: TextAlign.center,
           ),
         ],
@@ -63,35 +71,35 @@ class ChallengeCompletedDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'You completed your 7-day khatmah.',
+            LocaleKeys.completion_dialog.subtitle.tr(),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppColors.deepBrown,
+              color: AppColors.signalBlack,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.parchment,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.softSand),
+              color: AppColors.secondaryNeutral,
+              borderRadius: BorderRadius.circular(AppColors.standardRadius),
+              border: Border.all(color: AppColors.secondaryBorder),
             ),
             child: Text(
-              '30 Juz\' Completed ✓',
+              LocaleKeys.completion_dialog.badge.tr(),
               style: theme.textTheme.labelMedium?.copyWith(
-                color: AppColors.brassGoldDark,
+                color: AppColors.ink,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
-            'May Allah accept your recitation and make it a light in your heart.',
-            style: AppTypography.scholarlyQuote(AppColors.deepBrown).copyWith(
-              fontSize: 15,
+            LocaleKeys.completion_dialog.dua.tr(),
+            style: AppTypography.scholarlyQuote(AppColors.bodyGray, isAr).copyWith(
+              fontSize: 14,
             ),
             textAlign: TextAlign.center,
           ),
@@ -107,7 +115,12 @@ class ChallengeCompletedDialog extends StatelessWidget {
                 Navigator.of(context).pop();
                 onStartAnother();
               },
-              child: const Text('Start Another Khatmah'),
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                ),
+              ),
+              child: Text(LocaleKeys.completion_dialog.start_another.tr()),
             ),
             const SizedBox(height: 8),
             TextButton(
@@ -115,7 +128,7 @@ class ChallengeCompletedDialog extends StatelessWidget {
                 Navigator.of(context).pop();
                 onDismiss();
               },
-              child: const Text('View Journey Summary'),
+              child: Text(LocaleKeys.completion_dialog.view_summary.tr()),
             ),
           ],
         ),

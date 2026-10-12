@@ -1,4 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/day_portion.dart';
@@ -21,18 +24,22 @@ class PortionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isCompleted = portion.isCompleted;
+    final isAr = AppLanguage.isArabic(context);
+
+    final primaryRange = isAr ? portion.rangeDisplayAr : portion.rangeDisplay;
+    final secondaryRange = isAr ? portion.rangeDisplay : portion.rangeDisplayAr;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.parchmentLight,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.paper,
+        borderRadius: BorderRadius.circular(AppColors.standardRadius),
         border: Border.all(
-          color: isCompleted ? AppColors.brassGold : AppColors.softSand,
-          width: isCompleted ? 1.5 : 1.0,
+          color: isCompleted ? AppColors.dustyGreen : AppColors.mistGray,
+          width: 1.0,
         ),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -41,107 +48,100 @@ class PortionCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "TODAY'S PORTION • DAY ${portion.dayNumber}",
+                "${LocaleKeys.home.today_portion.tr()} • ${LocaleKeys.common.day_number.tr(args: [portion.dayNumber.toString()])}",
                 style: theme.textTheme.labelSmall?.copyWith(
-                  letterSpacing: 1.2,
-                  color: AppColors.brassGold,
+                  letterSpacing: 0.8,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.parchment,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.softSand, width: 0.8),
+                  color: AppColors.controlSurface,
+                  borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                  border: Border.all(color: AppColors.mistGray, width: 0.8),
                 ),
                 child: Text(
-                  '${portion.surahCount} surahs',
+                  LocaleKeys.common.surah_count.tr(args: [portion.surahCount.toString()]),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.deepBrown,
+                    color: AppColors.bodyGray,
+                    fontSize: 11,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Main portion display in Cormorant Garamond
+          // Main portion display
           Text(
-            portion.rangeDisplay,
-            style: theme.textTheme.displaySmall?.copyWith(
-              color: AppColors.deepBrown,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-
-          // Arabic translation / calligraphy label
-          if (portion.startSurahAr.isNotEmpty)
-            Text(
-              portion.rangeDisplayAr,
-              style: AppTypography.scholarlyQuote(AppColors.brassGold).copyWith(
-                fontSize: 18,
-                fontStyle: FontStyle.normal,
-              ),
-            ),
-          const SizedBox(height: 24),
-
-          // Action area
-          if (!isCompleted) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onMarkCompleted,
-                icon: const Icon(Icons.menu_book_rounded, size: 20),
-                label: const Text('I\'ve read my portion today'),
-              ),
-            ),
-          ] else ...[
-            // Completed state
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              decoration: BoxDecoration(
-                color: AppColors.brassGold.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppColors.brassGold.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.brassGold,
-                    size: 24,
+            primaryRange,
+            style: isAr
+                ? AppTypography.arabicSurahTitle(AppColors.ink, 26)
+                : theme.textTheme.headlineMedium?.copyWith(
+                    color: AppColors.signalBlack,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Completed — Alhamdulillah',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppColors.brassGoldDark,
+          ),
+          const SizedBox(height: 4),
+
+          // Secondary translation / transliteration
+          if (secondaryRange.isNotEmpty)
+            Text(
+              secondaryRange,
+              style: isAr
+                  ? theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    )
+                  : AppTypography.scholarlyQuote(AppColors.textMuted, false).copyWith(
+                      fontSize: 15,
+                      fontStyle: FontStyle.normal,
+                    ),
+            ),
+          const SizedBox(height: 20),
+
+          // Action button changes content and color in place without layout shift
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: isCompleted
+                ? OutlinedButton.icon(
+                    onPressed: onUndoCompleted,
+                    icon: const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.dustyGreen,
+                      size: 20,
+                    ),
+                    label: Text(
+                      LocaleKeys.home.completed_status.tr(),
+                      style: const TextStyle(
+                        color: AppColors.dustyGreen,
                         fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppColors.controlSurface,
+                      side: const BorderSide(color: AppColors.dustyGreen, width: 1.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                      ),
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: onMarkCompleted,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: Text(LocaleKeys.home.mark_as_completed.tr()),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.standardRadius),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton.icon(
-                onPressed: onUndoCompleted,
-                icon: const Icon(Icons.undo_rounded, size: 16),
-                label: const Text('Undo completion'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textMuted,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );

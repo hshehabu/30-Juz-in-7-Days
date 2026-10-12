@@ -1,4 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class BehindScheduleBanner extends StatelessWidget {
@@ -23,10 +25,10 @@ class BehindScheduleBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.cardSurface,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.controlSurface,
+        borderRadius: BorderRadius.circular(AppColors.standardRadius),
         border: Border.all(
-          color: AppColors.softSand,
+          color: AppColors.mistGray,
           width: 1,
         ),
       ),
@@ -37,25 +39,25 @@ class BehindScheduleBanner extends StatelessWidget {
             children: [
               const Icon(
                 Icons.schedule_rounded,
-                color: AppColors.brassGold,
-                size: 20,
+                color: AppColors.ink,
+                size: 18,
               ),
               const SizedBox(width: 8),
               Text(
-                'A gentle note on your progress',
-                style: theme.textTheme.labelMedium?.copyWith(
+                LocaleKeys.home.behind_schedule_title.tr(),
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.deepBrown,
+                  color: AppColors.signalBlack,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'You have $missedCount unfinished previous portion${missedCount > 1 ? 's' : ''}, with $daysRemaining day${daysRemaining == 1 ? '' : 's'} remaining in your khatmah.',
+            LocaleKeys.home.behind_schedule_desc.tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.deepBrown,
-              height: 1.4,
+              color: AppColors.bodyGray,
+              height: 1.45,
             ),
           ),
           const SizedBox(height: 16),
@@ -68,26 +70,24 @@ class BehindScheduleBanner extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                  ),
                 ),
-                child: const Text('Continue today\'s portion'),
+                child: Text(LocaleKeys.home.catch_up.tr()),
               ),
               ElevatedButton(
                 onPressed: onAdjustPlan,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                  ),
                 ),
-                child: const Text('Adjust my remaining plan'),
+                child: Text(LocaleKeys.home.adjust_plan.tr()),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Adjusting will spread your remaining Surahs evenly across the days you have left.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textMuted,
-              fontSize: 12,
-            ),
           ),
         ],
       ),

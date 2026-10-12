@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:thirty_juz_in_7_days/features/challenge/domain/entities/day_portion.dart';
 import 'package:thirty_juz_in_7_days/features/challenge/presentation/widgets/day_detail_sheet.dart';
+import 'test_helper.dart';
 
 void main() {
-  Widget buildSheetWrapper(Widget sheet) {
-    return MaterialApp(
-      home: Scaffold(
-        body: sheet,
-      ),
-    );
-  }
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await initTestLocalization();
+  });
 
   final testPortionDay1 = DayPortion(
     dayNumber: 1,
@@ -32,12 +30,12 @@ void main() {
     isCompleted: false,
   );
 
-  testWidgets('Current day portion displays normal "Mark as completed" button',
+  testWidgets('Current day portion displays normal "Mark as Completed" button',
       (tester) async {
     bool toggled = false;
 
     await tester.pumpWidget(
-      buildSheetWrapper(
+      wrapWithLocalization(
         DayDetailSheet(
           portion: testPortionDay1,
           portionDate: DateTime.now(),
@@ -48,21 +46,22 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text('Mark as completed'), findsOneWidget);
+    expect(find.text('Mark as Completed'), findsOneWidget);
     expect(find.text('Today'), findsOneWidget);
 
-    await tester.tap(find.text('Mark as completed'));
+    await tester.tap(find.text('Mark as Completed'));
     await tester.pumpAndSettle();
 
     expect(toggled, isTrue);
   });
 
   testWidgets(
-      'Upcoming day portion has no "Mark as completed" button rendered',
+      'Upcoming day portion has no "Mark as Completed" button rendered',
       (tester) async {
     await tester.pumpWidget(
-      buildSheetWrapper(
+      wrapWithLocalization(
         DayDetailSheet(
           portion: testPortionDay3,
           portionDate: DateTime.now().add(const Duration(days: 2)),
@@ -71,17 +70,18 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     // Button should be completely removed, not rendered
-    expect(find.text('Mark as completed'), findsNothing);
+    expect(find.text('Mark as Completed'), findsNothing);
     expect(find.byType(ElevatedButton), findsNothing);
   });
 
   testWidgets(
-      'Missed past day portion has no "Mark as completed" button rendered',
+      'Missed past day portion has no "Mark as Completed" button rendered',
       (tester) async {
     await tester.pumpWidget(
-      buildSheetWrapper(
+      wrapWithLocalization(
         DayDetailSheet(
           portion: testPortionDay1,
           portionDate: DateTime.now().subtract(const Duration(days: 2)),
@@ -90,10 +90,11 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text('Missed Portion'), findsOneWidget);
+    expect(find.text('Missed'), findsOneWidget);
     // Button should be completely removed, not rendered
-    expect(find.text('Mark as completed'), findsNothing);
+    expect(find.text('Mark as Completed'), findsNothing);
     expect(find.byType(ElevatedButton), findsNothing);
   });
 
@@ -106,7 +107,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      buildSheetWrapper(
+      wrapWithLocalization(
         DayDetailSheet(
           portion: testPortionDay1.copyWith(isAdjusted: true),
           portionDate: DateTime.now(),
@@ -115,6 +116,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(find.text('Schedule Status'), findsOneWidget);

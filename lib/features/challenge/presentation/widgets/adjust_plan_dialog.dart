@@ -1,34 +1,34 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/khatmah_constants.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/app_confirmation_sheet.dart';
 import '../../domain/entities/challenge.dart';
 import '../../domain/entities/day_portion.dart';
 
 class AdjustPlanDialog extends StatefulWidget {
   final Challenge challenge;
   final Function(List<DayPortion> updatedPortions) onConfirm;
-  final VoidCallback? onResetToTraditional;
 
   const AdjustPlanDialog({
     super.key,
     required this.challenge,
     required this.onConfirm,
-    this.onResetToTraditional,
   });
 
   static Future<void> show(
     BuildContext context, {
     required Challenge challenge,
     required Function(List<DayPortion> updatedPortions) onConfirm,
-    VoidCallback? onResetToTraditional,
   }) {
     return showDialog(
       context: context,
       builder: (_) => AdjustPlanDialog(
         challenge: challenge,
         onConfirm: onConfirm,
-        onResetToTraditional: onResetToTraditional,
       ),
     );
   }
@@ -78,13 +78,15 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
     }
 
     // Determine which traditional blocks have already been completed
-    // in past days (days < currentDay)
-    final completedPastCount =
-        portions.where((p) => p.dayNumber < currentDay && p.isCompleted).length;
+    final completedBlocks = widget.challenge.completedBlockIndices;
 
     // Remaining traditional blocks to distribute
-    final unreadBlocks =
-        KhatmahConstants.traditionalSchedule.sublist(completedPastCount);
+    final unreadBlocks = <DefaultPortionData>[];
+    for (int i = 0; i < KhatmahConstants.traditionalSchedule.length; i++) {
+      if (!completedBlocks.contains(i)) {
+        unreadBlocks.add(KhatmahConstants.traditionalSchedule[i]);
+      }
+    }
 
     final totalUnread = unreadBlocks.length;
     final totalRemainingDays = remainingDays.length;
@@ -126,7 +128,7 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
       }
     }
 
-    result.sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
+    _canAdjust = true;
     _proposedPortions = result;
   }
 
@@ -137,41 +139,46 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
 
     if (!_canAdjust) {
       return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.standardRadius),
+          side: const BorderSide(color: AppColors.mistGray),
+        ),
         title: Text(
-          'Khatmah Concluded',
-          style: AppTypography.appBarTitle(AppColors.deepBrown),
+          LocaleKeys.adjust_plan.concluded_title.tr(),
+          style: AppTypography.appBarTitle(
+            AppColors.signalBlack,
+            AppLanguage.isArabic(context),
+          ),
         ),
         content: Text(
-          'Your 7-day challenge period has ended. The plan cannot be adjusted because there are no active days remaining.\n\nYou can start a new 7-day khatmah from the home or progress screen anytime.',
+          LocaleKeys.adjust_plan.concluded_desc.tr(),
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.deepBrown,
-            height: 1.4,
+            color: AppColors.bodyGray,
+            height: 1.45,
           ),
         ),
         actions: [
-          if (widget.onResetToTraditional != null)
-            TextButton(
-              onPressed: () {
-                widget.onResetToTraditional?.call();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Reset Schedule'),
-            ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: Text(LocaleKeys.adjust_plan.close.tr()),
           ),
         ],
       );
     }
 
+    final isAr = AppLanguage.isArabic(context);
+
     return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.standardRadius),
+        side: const BorderSide(color: AppColors.mistGray),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+      contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+      actionsPadding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
       title: Text(
-        'Adjust Remaining Plan',
-        style: AppTypography.appBarTitle(AppColors.deepBrown),
+        LocaleKeys.adjust_plan.title.tr(),
+        style: AppTypography.appBarTitle(AppColors.signalBlack, isAr),
       ),
       content: SizedBox(
         width: double.maxFinite,
@@ -181,18 +188,19 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'We redistributed your unread portions consecutively across the remaining days of your khatmah. Completed portions are preserved.',
+                LocaleKeys.adjust_plan.description.tr(),
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.deepBrown,
-                  height: 1.4,
+                  color: AppColors.bodyGray,
+                  height: 1.45,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                'NEW SCHEDULE PREVIEW',
+                LocaleKeys.adjust_plan.preview_title.tr(),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.brassGold,
+                  color: AppColors.textMuted,
                   letterSpacing: 0.8,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
@@ -201,45 +209,45 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
                 final isUpcoming = p.dayNumber >= currentDay;
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
+                  margin: const EdgeInsets.only(bottom: 6),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
+                    horizontal: 12,
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? AppColors.parchment
+                        ? AppColors.controlSurface
                         : (p.isAdjusted
-                            ? AppColors.brassGold.withValues(alpha: 0.06)
-                            : AppColors.parchmentLight),
-                    borderRadius: BorderRadius.circular(8),
+                            ? AppColors.secondaryNeutral
+                            : AppColors.paper),
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
                     border: Border.all(
                       color: p.isAdjusted
-                          ? AppColors.brassGold.withValues(alpha: 0.4)
-                          : AppColors.softSand,
+                          ? AppColors.secondaryBorder
+                          : AppColors.mistGray,
                     ),
                   ),
                   child: Row(
                     children: [
                       Text(
-                        'Day ${p.dayNumber}',
+                        LocaleKeys.common.day_number.tr(args: [p.dayNumber.toString()]),
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: 12,
                           color: isCompleted
                               ? AppColors.textMuted
-                              : AppColors.deepBrown,
+                              : AppColors.signalBlack,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          p.rangeDisplay,
+                          isAr ? p.rangeDisplayAr : p.rangeDisplay,
                           style: TextStyle(
                             fontSize: 13,
                             color: isCompleted
                                 ? AppColors.textMuted
-                                : AppColors.deepBrown,
+                                : AppColors.bodyGray,
                             fontWeight: isUpcoming
                                 ? FontWeight.w600
                                 : FontWeight.w400,
@@ -250,7 +258,7 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
                         const Icon(
                           Icons.check_circle_rounded,
                           size: 16,
-                          color: AppColors.brassGold,
+                          color: AppColors.ink,
                         )
                       else if (p.isAdjusted)
                         Container(
@@ -259,14 +267,16 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.brassGold.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
+                            color: AppColors.controlSurface,
+                            borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                            border: Border.all(color: AppColors.mistGray),
                           ),
                           child: Text(
-                            'Adjusted',
+                            LocaleKeys.common.adjusted.tr(),
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontSize: 9,
-                              color: AppColors.brassGoldDark,
+                              color: AppColors.ink,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -279,24 +289,48 @@ class _AdjustPlanDialogState extends State<AdjustPlanDialog> {
         ),
       ),
       actions: [
-        if (widget.onResetToTraditional != null)
-          TextButton(
-            onPressed: () {
-              widget.onResetToTraditional!.call();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Reset to Traditional'),
-          ),
-        OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            widget.onConfirm(_proposedPortions);
-            Navigator.of(context).pop();
-          },
-          child: const Text('Apply Plan'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                  ),
+                ),
+                child: Text(LocaleKeys.adjust_plan.cancel.tr()),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () async {
+                  final confirmed = await AppConfirmationSheet.show(
+                    context,
+                    title: LocaleKeys.confirmation.apply_plan_title.tr(),
+                    message: LocaleKeys.confirmation.apply_plan_desc.tr(),
+                    confirmLabel: LocaleKeys.adjust_plan.apply_plan.tr(),
+                    cancelLabel: LocaleKeys.common.cancel.tr(),
+                    icon: Icons.check_circle_outline_rounded,
+                    iconColor: AppColors.dustyGreen,
+                  );
+                  if (confirmed && context.mounted) {
+                    widget.onConfirm(_proposedPortions);
+                    Navigator.of(context).pop();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                  ),
+                ),
+                child: Text(LocaleKeys.adjust_plan.apply_plan.tr()),
+              ),
+            ),
+          ],
         ),
       ],
     );

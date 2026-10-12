@@ -1,5 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -56,10 +59,10 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppColors.brassGold,
-              onPrimary: AppColors.textLight,
-              surface: AppColors.parchmentLight,
-              onSurface: AppColors.deepBrown,
+              primary: AppColors.ink,
+              onPrimary: AppColors.paper,
+              surface: AppColors.paper,
+              onSurface: AppColors.ink,
             ),
           ),
           child: child!,
@@ -82,10 +85,10 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppColors.brassGold,
-              onPrimary: AppColors.textLight,
-              surface: AppColors.parchmentLight,
-              onSurface: AppColors.deepBrown,
+              primary: AppColors.ink,
+              onPrimary: AppColors.paper,
+              surface: AppColors.paper,
+              onSurface: AppColors.ink,
             ),
           ),
           child: child!,
@@ -110,7 +113,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
 
     final challengeState = ref.read(challengeStateProvider);
     final notifier = ref.read(challengeStateProvider.notifier);
-    
+
     if (challengeState.challenge != null) {
       await notifier.startNewChallenge(
         startDate: _selectedStartDate,
@@ -124,49 +127,95 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
     }
   }
 
+  void _toggleLanguage() async {
+    final newLocale = AppLanguage.isArabic(context)
+        ? const Locale('en')
+        : const Locale('ar');
+    await AppLanguage.switchLanguage(context, newLocale);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isAr = AppLanguage.isArabic(context);
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Top Step Indicator
+            // Top Bar: Step Indicator & Language Switcher
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
                 children: [
                   if (_currentPage > 0)
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                      icon: Icon(
+                        isAr
+                            ? Icons.arrow_forward_ios_rounded
+                            : Icons.arrow_back_ios_new_rounded,
+                        size: 18,
+                      ),
                       onPressed: _prevPage,
-                      color: AppColors.deepBrown,
+                      color: AppColors.ink,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     )
                   else
                     const SizedBox(width: 18),
                   const Spacer(),
-                  // Dots
+                  // Step Indicator Bars
                   Row(
                     children: List.generate(4, (index) {
                       final isActive = index == _currentPage;
                       return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
                         width: isActive ? 20 : 6,
-                        height: 6,
+                        height: 4,
                         decoration: BoxDecoration(
                           color: isActive
-                              ? AppColors.brassGold
-                              : AppColors.softSand,
-                          borderRadius: BorderRadius.circular(3),
+                              ? AppColors.ink
+                              : AppColors.secondaryNeutral,
+                          borderRadius: BorderRadius.circular(AppColors.standardRadius),
                         ),
                       );
                     }),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 18),
+                  // Language quick toggle
+                  InkWell(
+                    onTap: _toggleLanguage,
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.controlSurface,
+                        borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                        border: Border.all(color: AppColors.secondaryBorder),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.translate_rounded,
+                            size: 14,
+                            color: AppColors.ink,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isAr ? 'English' : 'العربية',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.ink,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -211,25 +260,28 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   const Spacer(),
                   // Scholarly app logo
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
                     child: Image.asset(
-                      'assets/images/app_logo.jpg',
+                      'assets/images/app_logo.png',
                       width: 88,
                       height: 88,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (_, _, _) => Container(
                         width: 88,
                         height: 88,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.parchmentLight,
-                          border: Border.all(color: AppColors.brassGold, width: 1.5),
+                          borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                          color: AppColors.controlSurface,
+                          border: Border.all(
+                            color: AppColors.mistGray,
+                            width: 1.0,
+                          ),
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.auto_stories_rounded,
                             size: 38,
-                            color: AppColors.brassGold,
+                            color: AppColors.ink,
                           ),
                         ),
                       ),
@@ -238,19 +290,19 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   const SizedBox(height: 28),
 
                   Text(
-                    "30 Juz' in 7 Days",
+                    LocaleKeys.onboarding.step1_title.tr(),
                     style: theme.textTheme.displayMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.deepBrown,
+                      color: AppColors.signalBlack,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 14),
 
                   Text(
-                    'Complete the Qur\'an in seven days with a simple daily reminder and progress tracker.',
+                    LocaleKeys.onboarding.step1_tagline.tr(),
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: AppColors.deepBrown,
+                      color: AppColors.secondaryText,
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
@@ -261,15 +313,18 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.parchmentLight,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.softSand),
+                      color: AppColors.controlSurface,
+                      borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                      border: Border.all(color: AppColors.mistGray),
                     ),
                     child: Column(
                       children: [
                         Text(
-                          'اقرأ القرآن في سبع ولا تزد على ذلك',
-                          style: AppTypography.scholarlyQuote(AppColors.brassGold).copyWith(
+                          LocaleKeys.onboarding.hadith_quote.tr(),
+                          style: AppTypography.scholarlyQuote(
+                            AppColors.ink,
+                            true,
+                          ).copyWith(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             fontStyle: FontStyle.normal,
@@ -278,10 +333,10 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Sahih al-Bukhari 5052',
+                          LocaleKeys.onboarding.hadith_ref.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondaryText,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -294,7 +349,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _nextPage,
-                      child: const Text('Start My 7-Day Khatmah'),
+                      child: Text(LocaleKeys.onboarding.step1_cta.tr()),
                     ),
                   ),
                 ],
@@ -324,17 +379,17 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                 children: [
                   const SizedBox(height: 20),
                   Text(
-                    'When would you like to begin?',
+                    LocaleKeys.onboarding.step2_title.tr(),
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.deepBrown,
+                      color: AppColors.signalBlack,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Your 7-day khatmah will run for 7 consecutive days starting from your chosen date.',
+                    LocaleKeys.onboarding.step2_desc.tr(),
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: AppColors.secondaryText,
                       height: 1.45,
                     ),
                   ),
@@ -347,14 +402,18 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                         _selectedStartDate = AppDateUtils.dateOnly(DateTime.now());
                       });
                     },
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
                     child: Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: isToday ? AppColors.parchmentLight : AppColors.parchment,
-                        borderRadius: BorderRadius.circular(12),
+                        color: isToday
+                            ? AppColors.paper
+                            : AppColors.controlSurface,
+                        borderRadius: BorderRadius.circular(AppColors.standardRadius),
                         border: Border.all(
-                          color: isToday ? AppColors.brassGold : AppColors.softSand,
+                          color: isToday
+                              ? AppColors.ink
+                              : AppColors.mistGray,
                           width: isToday ? 1.5 : 1.0,
                         ),
                       ),
@@ -364,7 +423,9 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                             isToday
                                 ? Icons.radio_button_checked_rounded
                                 : Icons.radio_button_off_rounded,
-                            color: isToday ? AppColors.brassGold : AppColors.textMuted,
+                            color: isToday
+                                ? AppColors.ink
+                                : AppColors.secondaryText,
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -372,16 +433,16 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Today',
+                                  LocaleKeys.onboarding.option_today.tr(),
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.deepBrown,
+                                    color: AppColors.ink,
                                   ),
                                 ),
                                 Text(
                                   AppDateUtils.formatDate(DateTime.now()),
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textMuted,
+                                    color: AppColors.secondaryText,
                                   ),
                                 ),
                               ],
@@ -396,14 +457,18 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   // Option: Pick Future Date
                   InkWell(
                     onTap: _pickStartDate,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
                     child: Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: !isToday ? AppColors.parchmentLight : AppColors.parchment,
-                        borderRadius: BorderRadius.circular(12),
+                        color: !isToday
+                            ? AppColors.paper
+                            : AppColors.controlSurface,
+                        borderRadius: BorderRadius.circular(AppColors.standardRadius),
                         border: Border.all(
-                          color: !isToday ? AppColors.brassGold : AppColors.softSand,
+                          color: !isToday
+                              ? AppColors.ink
+                              : AppColors.mistGray,
                           width: !isToday ? 1.5 : 1.0,
                         ),
                       ),
@@ -413,7 +478,9 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                             !isToday
                                 ? Icons.radio_button_checked_rounded
                                 : Icons.radio_button_off_rounded,
-                            color: !isToday ? AppColors.brassGold : AppColors.textMuted,
+                            color: !isToday
+                                ? AppColors.ink
+                                : AppColors.secondaryText,
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -421,22 +488,23 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Choose another date',
+                                  LocaleKeys.onboarding.option_future.tr(),
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.deepBrown,
+                                    color: AppColors.ink,
                                   ),
                                 ),
                                 Text(
                                   !isToday
                                       ? AppDateUtils.formatDate(_selectedStartDate)
-                                      : 'Select a future start date',
+                                      : LocaleKeys.onboarding.select_future_date.tr(),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: !isToday
-                                        ? AppColors.brassGold
-                                        : AppColors.textMuted,
-                                    fontWeight:
-                                        !isToday ? FontWeight.w600 : FontWeight.w400,
+                                        ? AppColors.ink
+                                        : AppColors.secondaryText,
+                                    fontWeight: !isToday
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                   ),
                                 ),
                               ],
@@ -444,7 +512,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                           ),
                           const Icon(
                             Icons.calendar_today_rounded,
-                            color: AppColors.brassGold,
+                            color: AppColors.ink,
                             size: 20,
                           ),
                         ],
@@ -458,7 +526,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _nextPage,
-                      child: const Text('Continue'),
+                      child: Text(LocaleKeys.onboarding.continue_button.tr()),
                     ),
                   ),
                 ],
@@ -484,17 +552,17 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                 children: [
                   const SizedBox(height: 20),
                   Text(
-                    'When should we remind you?',
+                    LocaleKeys.onboarding.step3_title.tr(),
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.deepBrown,
+                      color: AppColors.signalBlack,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'We will send one gentle daily reminder with today\'s assigned reading portion.',
+                    LocaleKeys.onboarding.step3_desc.tr(),
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: AppColors.secondaryText,
                       height: 1.45,
                     ),
                   ),
@@ -503,13 +571,16 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   // Time selector tile
                   InkWell(
                     onTap: _pickReminderTime,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppColors.standardRadius),
                     child: Container(
-                      padding: const EdgeInsets.all(22),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: AppColors.parchmentLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.brassGold, width: 1.2),
+                        color: AppColors.controlSurface,
+                        borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                        border: Border.all(
+                          color: AppColors.mistGray,
+                          width: 1.0,
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -519,16 +590,16 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                               children: [
                                 const Icon(
                                   Icons.access_time_rounded,
-                                  color: AppColors.brassGold,
+                                  color: AppColors.ink,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Text(
-                                    'Daily reminder at:',
+                                    LocaleKeys.onboarding.reminder_at.tr(),
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.deepBrown,
+                                      color: AppColors.ink,
                                     ),
                                   ),
                                 ),
@@ -537,17 +608,19 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColors.parchment,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.softSand),
+                              color: AppColors.paper,
+                              borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                              border: Border.all(color: AppColors.secondaryBorder),
                             ),
                             child: Text(
                               AppDateUtils.formatTimeOfDay(_selectedReminderTime),
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: AppColors.brassGoldDark,
+                                color: AppColors.ink,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -562,24 +635,24 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.parchmentLight,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.softSand),
+                      color: AppColors.controlSurface,
+                      borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                      border: Border.all(color: AppColors.mistGray),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(
                           Icons.notifications_active_outlined,
-                          color: AppColors.brassGold,
+                          color: AppColors.ink,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'No spam or aggressive messaging. If you complete your portion early, we will not send that day\'s reminder.',
+                            LocaleKeys.onboarding.reminder_note.tr(),
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.deepBrown,
+                              color: AppColors.secondaryText,
                               height: 1.4,
                             ),
                           ),
@@ -594,7 +667,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _nextPage,
-                      child: const Text('Review Plan'),
+                      child: Text(LocaleKeys.onboarding.review_plan.tr()),
                     ),
                   ),
                 ],
@@ -622,17 +695,17 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                 children: [
                   const SizedBox(height: 20),
                   Text(
-                    'Your 7-Day Khatmah',
+                    LocaleKeys.onboarding.step4_title.tr(),
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.deepBrown,
+                      color: AppColors.signalBlack,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Please review your challenge plan before beginning.',
+                    LocaleKeys.onboarding.step4_desc.tr(),
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: AppColors.secondaryText,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -641,32 +714,32 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppColors.parchmentLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.softSand),
+                      color: AppColors.paper,
+                      borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                      border: Border.all(color: AppColors.mistGray),
                     ),
                     child: Column(
                       children: [
                         _buildSummaryRow(
-                          'Start Date',
+                           LocaleKeys.onboarding.start_date.tr(),
                           AppDateUtils.formatDateWithYear(_selectedStartDate),
                           theme,
                         ),
-                        const Divider(height: 22),
+                        const Divider(height: 22, color: AppColors.secondaryNeutral),
                         _buildSummaryRow(
-                          'End Date',
+                          LocaleKeys.onboarding.end_date.tr(),
                           AppDateUtils.formatDateWithYear(endDate),
                           theme,
                         ),
-                        const Divider(height: 22),
+                        const Divider(height: 22, color: AppColors.secondaryNeutral),
                         _buildSummaryRow(
-                          'Day 1 Portion',
-                          'Al-Baqarah → An-Nisa (3 surahs)',
+                          LocaleKeys.onboarding.day1_portion.tr(),
+                          LocaleKeys.onboarding.day1_portion_value.tr(),
                           theme,
                         ),
-                        const Divider(height: 22),
+                        const Divider(height: 22, color: AppColors.secondaryNeutral),
                         _buildSummaryRow(
-                          'Daily Reminder',
+                          LocaleKeys.onboarding.daily_reminder.tr(),
                           AppDateUtils.formatTimeOfDay(_selectedReminderTime),
                           theme,
                         ),
@@ -680,7 +753,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _finishAndStart,
-                      child: const Text('Start Khatmah'),
+                      child: Text(LocaleKeys.onboarding.start_khatmah.tr()),
                     ),
                   ),
                 ],
@@ -699,7 +772,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
         Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textMuted,
+            color: AppColors.secondaryText,
           ),
         ),
         const SizedBox(width: 16),
@@ -709,7 +782,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
             textAlign: TextAlign.end,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppColors.deepBrown,
+              color: AppColors.ink,
             ),
           ),
         ),

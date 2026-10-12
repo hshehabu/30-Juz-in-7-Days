@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:thirty_juz_in_7_days/features/onboarding/presentation/pages/onboarding_flow_page.dart';
+import 'test_helper.dart';
 
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await initTestLocalization();
+  });
+
   testWidgets(
       'Onboarding summary page renders without RenderFlex overflow on narrow screen',
       (tester) async {
@@ -22,9 +28,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(
-          home: Scaffold(
+      wrapWithLocalization(
+        ProviderScope(
+          child: Scaffold(
             body: OnboardingFlowPage(
               onCompleted: () {},
             ),
@@ -32,6 +38,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     // Page 0: Welcome -> Tap "Start My 7-Day Khatmah"
     expect(find.text('Start My 7-Day Khatmah'), findsOneWidget);
