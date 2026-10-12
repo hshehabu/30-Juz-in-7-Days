@@ -1,0 +1,11 @@
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+
+This application bundles the following open fonts under the SIL Open Font License (OFL), Version 1.1:
+- Plus Jakarta Sans (Copyright 2020 The Plus Jakarta Sans Project Authors, https://github.com/tokotype/Plus-Jakarta-Sans)
+- Tajawal (Copyright 2018 The Tajawal Project Authors, https://github.com/motawer/tajawal)
+- Amiri (Copyright 2010-2022 The Amiri Project Authors, https://github.com/aliftype/amiri)
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the conditions of the SIL Open Font License, Version 1.1.

@@ -107,6 +107,70 @@ class KhatmahConstants {
   ];
 
   static const String hadithSource = 'Sahih al-Bukhari 5052';
+  static const String hadithSourceAr = 'صحيح البخاري (٥٠٥٢)';
   static const String hadithText =
       'The Prophet ﷺ instructed ʿAbdullah ibn ʿAmr to recite the Qur\'an in seven days: "Read it in seven days, and do not exceed that."';
+  static const String hadithTextAr =
+      'عَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو رَضِيَ اللَّهُ عَنْهُمَا، قَالَ لِي رَسُولُ اللَّهِ ﷺ: «اقْرَأِ الْقُرْآنَ فِي سَبْعٍ، وَلَا تَزِدْ عَلَى ذَلِكَ».';
+  static const String hadithQuote = '«اقْرَأِ الْقُرْآنَ فِي كُلِّ سَبْعٍ»';
+
+  static String getHadithText(bool isArabic) =>
+      isArabic ? hadithTextAr : hadithText;
+
+  static String getHadithSource(bool isArabic) =>
+      isArabic ? hadithSourceAr : hadithSource;
+
+  static String _normalize(String s) {
+    return s.replaceAll('’', "'").replaceAll('`', "'").trim().toLowerCase();
+  }
+
+  static String _normalizeAr(String s) {
+    return s
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي')
+        .trim();
+  }
+
+  /// Returns the traditional block index (0..6) matching the given start surah (English or Arabic).
+  /// Returns -1 if not found.
+  static int getBlockIndexByStartSurah(String surahName) {
+    final norm = _normalize(surahName);
+    final normAr = _normalizeAr(surahName);
+    for (int i = 0; i < traditionalSchedule.length; i++) {
+      final block = traditionalSchedule[i];
+      if (_normalize(block.startSurah) == norm ||
+          _normalizeAr(block.startSurahAr) == normAr) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /// Returns the traditional block index (0..6) matching the given end surah (English or Arabic).
+  /// Returns -1 if not found.
+  static int getBlockIndexByEndSurah(String surahName) {
+    final norm = _normalize(surahName);
+    final normAr = _normalizeAr(surahName);
+    for (int i = 0; i < traditionalSchedule.length; i++) {
+      final block = traditionalSchedule[i];
+      if (_normalize(block.endSurah) == norm ||
+          _normalizeAr(block.endSurahAr) == normAr) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /// Returns the set of traditional block indices (0..6) covered by a portion range.
+  static Set<int> getBlocksCovered(String startSurah, String endSurah) {
+    final startIdx = getBlockIndexByStartSurah(startSurah);
+    final endIdx = getBlockIndexByEndSurah(endSurah);
+    if (startIdx != -1 && endIdx != -1 && startIdx <= endIdx) {
+      return {for (int i = startIdx; i <= endIdx; i++) i};
+    }
+    return {};
+  }
 }

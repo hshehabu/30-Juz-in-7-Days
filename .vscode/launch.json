@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "30 Juz in 7 Days",
+      "request": "launch",
+      "type": "dart"
+    },
+    {
+      "name": "30 Juz in 7 Days (Profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "30 Juz in 7 Days (Release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    }
+  ]
+}
