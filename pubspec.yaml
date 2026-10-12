@@ -38,7 +38,8 @@ dependencies:
   flutter_timezone: ^5.1.0
   timezone: ^0.10.0
   google_fonts: ^6.2.1
-  intl: ^0.19.0
+  intl: ^0.20.2
+  easy_localization: ^3.0.8
 
 dev_dependencies:
   flutter_test:
@@ -54,7 +55,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/app_logo.jpg"
+  image_path: "assets/images/app_logo.png"
+  adaptive_icon_background: "#F3F7F5"
+  adaptive_icon_foreground: "assets/images/app_logo.png"
   remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
@@ -71,6 +74,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/translations/
+    - assets/google_fonts/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

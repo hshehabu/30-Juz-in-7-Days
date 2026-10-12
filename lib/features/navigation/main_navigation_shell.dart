@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../../core/localization/locale_keys.g.dart';
 import '../../core/theme/app_colors.dart';
 import '../challenge/presentation/pages/home_page.dart';
 import '../challenge/presentation/pages/progress_page.dart';
@@ -14,11 +16,30 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
+  final GlobalKey<ProgressPageState> _progressPageKey =
+      GlobalKey<ProgressPageState>();
 
   void _navigateToTab(int index) {
+    if (index == 1 && _currentIndex != 1) {
+      _progressPageKey.currentState?.resetToStep1();
+    }
     setState(() {
       _currentIndex = index;
     });
+  }
+
+  void _navigateToJourneyFromHome() {
+    _progressPageKey.currentState?.openStep2FromHome();
+    setState(() {
+      _currentIndex = 1;
+    });
+  }
+
+  void _onBackToHome() {
+    setState(() {
+      _currentIndex = 0;
+    });
+    _progressPageKey.currentState?.resetToStep1();
   }
 
   void _openStartNewKhatmahFlow() {
@@ -40,13 +61,20 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Explicitly read context.locale so this stateful shell registers a dependency
+    // on the active locale. When the user switches language in Settings, this shell
+    // immediately rebuilds its BottomNavigationBar with the new localized labels and direction.
+    final currentLocale = context.locale;
+
     final pages = [
       HomePage(
-        onNavigateToProgress: () => _navigateToTab(1),
+        onNavigateToProgress: _navigateToJourneyFromHome,
         onStartNewKhatmah: _openStartNewKhatmahFlow,
       ),
       ProgressPage(
+        key: _progressPageKey,
         onStartNewKhatmah: _openStartNewKhatmahFlow,
+        onBackToHome: _onBackToHome,
       ),
       SettingsPage(
         onStartNewKhatmah: _openStartNewKhatmahFlow,
@@ -60,29 +88,30 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          color: AppColors.parchment,
+          color: AppColors.paper,
           border: Border(
-            top: BorderSide(color: AppColors.softSand, width: 1),
+            top: BorderSide(color: AppColors.secondaryNeutral, width: 1),
           ),
         ),
         child: BottomNavigationBar(
+          key: ValueKey('bottom_nav_${currentLocale.languageCode}'),
           currentIndex: _currentIndex,
           onTap: _navigateToTab,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book_rounded),
-              activeIcon: Icon(Icons.menu_book_rounded),
-              label: 'Home',
+              icon: const Icon(Icons.menu_book_rounded),
+              activeIcon: const Icon(Icons.menu_book_rounded),
+              label: LocaleKeys.navigation.today.tr(context: context),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.timeline_rounded),
-              activeIcon: Icon(Icons.timeline_rounded),
-              label: 'Progress',
+              icon: const Icon(Icons.timeline_rounded),
+              activeIcon: const Icon(Icons.timeline_rounded),
+              label: LocaleKeys.navigation.journey.tr(context: context),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.tune_rounded),
-              activeIcon: Icon(Icons.tune_rounded),
-              label: 'Settings',
+              icon: const Icon(Icons.tune_rounded),
+              activeIcon: const Icon(Icons.tune_rounded),
+              label: LocaleKeys.navigation.settings.tr(context: context),
             ),
           ],
         ),
