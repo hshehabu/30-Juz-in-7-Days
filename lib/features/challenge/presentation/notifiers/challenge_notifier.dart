@@ -210,11 +210,11 @@ class ChallengeNotifier extends StateNotifier<ChallengeState> {
   }
 
   Future<void> rescheduleReminders() async {
-    final current = state.challenge;
-    if (current != null && storageService.isReminderEnabled && !current.isCompleted) {
+    if (storageService.isReminderEnabled) {
+      final time = state.challenge?.reminderTime ?? storageService.reminderTime;
       await updateReminderSettings(
         enabled: true,
-        reminderTime: current.reminderTime,
+        reminderTime: time,
       );
     }
   }

@@ -270,25 +270,33 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
         reminderMinute: reminderTime.minute,
       );
       await localDataSource.saveActiveChallenge(updatedChallenge);
+    }
 
-      if (enabled && !updatedChallenge.isCompleted) {
-        try {
-          final completedDays = updatedChallenge.portions
-              .where((p) => p.isCompleted)
-              .map((p) => p.dayNumber)
-              .toSet();
-          await notificationService.scheduleChallengeReminders(
-            startDate: updatedChallenge.startDate,
-            reminderTime: reminderTime,
-            schedule: _portionsToScheduleData(updatedChallenge.portions),
-            completedDays: completedDays,
-          );
-        } catch (_) {}
-      } else {
-        try {
-          await notificationService.cancelAll();
-        } catch (_) {}
-      }
+    if (enabled) {
+      try {
+        final active = current ?? await localDataSource.getActiveChallenge();
+        final completedDays = active != null
+            ? active.portions
+                .where((p) => p.isCompleted)
+                .map((p) => p.dayNumber)
+                .toSet()
+            : <int>{};
+        final schedule = active != null
+            ? _portionsToScheduleData(active.portions)
+            : KhatmahConstants.traditionalSchedule;
+        final startDate = active?.startDate ?? DateTime.now();
+
+        await notificationService.scheduleChallengeReminders(
+          startDate: startDate,
+          reminderTime: reminderTime,
+          schedule: schedule,
+          completedDays: completedDays,
+        );
+      } catch (_) {}
+    } else {
+      try {
+        await notificationService.cancelAll();
+      } catch (_) {}
     }
   }
 }

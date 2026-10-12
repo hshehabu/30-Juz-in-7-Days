@@ -21,7 +21,8 @@ void notificationTapBackground(NotificationResponse response) async {
 
 class NotificationService {
   static const String markCompletedActionId = 'mark_completed';
-  static const String _channelId = 'khatmah_daily_reminders_v3';
+  static const int dailyReminderId = 0;
+  static const String _channelId = 'khatmah_daily_reminders_v4';
   static const String _channelName = 'Daily Khatmah Reminders';
   static const String _channelDesc =
       'Gentle daily reminders for your 7-day Qur\'an completion';
@@ -54,6 +55,19 @@ class NotificationService {
       } catch (_) {
         tz.setLocalLocation(tz.getLocation('UTC'));
       }
+    }
+
+    // Safety check: ensure tz.local's offset strictly matches the device's actual offset
+    if (tz.local.currentTimeZone.offset !=
+        DateTime.now().timeZoneOffset.inMilliseconds) {
+      try {
+        final currentOffset = DateTime.now().timeZoneOffset;
+        final match = tz.timeZoneDatabase.locations.values.firstWhere(
+          (loc) => loc.currentTimeZone.offset == currentOffset.inMilliseconds,
+          orElse: () => tz.local,
+        );
+        tz.setLocalLocation(match);
+      } catch (_) {}
     }
 
     const androidSettings =
@@ -178,9 +192,13 @@ class NotificationService {
     return androidGranted || iosGranted;
   }
 
-  /// Schedules a daily notification at the user-configured [reminderTime] for each day of the challenge.
-  /// Total: 7 scheduled notifications. Notification ID: portion.dayNumber (1 to 7).
-  /// Any day in [completedDays] is skipped.
+  /// Schedules a daily notification at the user-configured [reminderTime].
+  /// Guarantees that:
+  /// 1. A Master Daily Recurring Reminder (ID 0) is ALWAYS scheduled for the very next occurrence
+  ///    of [reminderTime] (today if in the future, tomorrow if already passed), repeating daily via
+  ///    [matchDateTimeComponents: DateTimeComponents.time].
+  /// 2. Specific portion reminders are also scheduled for upcoming days of the challenge.
+  /// 3. Incomplete portions for today are never skipped.
   Future<void> scheduleChallengeReminders({
     required DateTime startDate,
     TimeOfDay reminderTime = const TimeOfDay(hour: 19, minute: 0),
@@ -191,14 +209,61 @@ class NotificationService {
 
     await cancelAll();
 
-    final tzNow = tz.TZDateTime.now(tz.local);
+    final now = tz.TZDateTime.now(tz.local);
+
+    // 1. Calculate the next occurrence of reminderTime (today if in future, else tomorrow)
+    var nextDailyDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      reminderTime.hour,
+      reminderTime.minute,
+      0,
+    );
+    if (!nextDailyDate.isAfter(now)) {
+      nextDailyDate = nextDailyDate.add(const Duration(days: 1));
+    }
+
+    // Determine what content to show for the daily reminder:
+    // Pick the earliest uncompleted portion from the schedule
+    DefaultPortionData? nextPortion;
+    for (final p in schedule) {
+      if (!completedDays.contains(p.dayNumber)) {
+        nextPortion = p;
+        break;
+      }
+    }
+
+    final dailyTitle = nextPortion != null
+        ? 'Daily Qur\'an Portion 📖'
+        : 'Daily Qur\'an Reminder 📖';
+    final dailyBody = nextPortion != null
+        ? 'Day ${nextPortion.dayNumber}: ${nextPortion.rangeDisplay}'
+        : 'Time for your daily Qur\'an reading. Keep up your blessed habit!';
+    final dailyPayload = nextPortion != null
+        ? nextPortion.dayNumber.toString()
+        : 'daily';
+
+    // 2. Schedule the MASTER recurring daily reminder (ID 0)
+    // with matchDateTimeComponents: DateTimeComponents.time
+    await _scheduleZonedNotification(
+      id: dailyReminderId,
+      title: dailyTitle,
+      body: dailyBody,
+      scheduledDate: nextDailyDate,
+      payload: dailyPayload,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 3. In addition, schedule specific portion reminders for each day in the schedule (IDs 1..7)
     final normalizedStart =
         DateTime(startDate.year, startDate.month, startDate.day);
 
     for (int i = 0; i < schedule.length; i++) {
       final portion = schedule[i];
       if (completedDays.contains(portion.dayNumber)) {
-        continue; // Skip already completed days
+        continue;
       }
 
       final targetDate = DateTime(
@@ -216,37 +281,75 @@ class NotificationService {
         0,
       );
 
-      // Only schedule future reminder times
-      if (scheduledDate.isAfter(tzNow)) {
-        try {
-          await _plugin.zonedSchedule(
-            portion.dayNumber,
-            'Daily Qur\'an Portion 📖',
-            'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
-            scheduledDate,
-            _buildNotificationDetails(),
-            payload: portion.dayNumber.toString(),
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation:
-                UILocalNotificationDateInterpretation.absoluteTime,
-          );
-        } catch (_) {
-          // If exact alarm mode throws on Android (e.g. restriction without permission),
-          // fallback to inexact without crashing or stopping remaining days
-          await _plugin.zonedSchedule(
-            portion.dayNumber,
-            'Daily Qur\'an Portion 📖',
-            'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
-            scheduledDate,
-            _buildNotificationDetails(),
-            payload: portion.dayNumber.toString(),
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation:
-                UILocalNotificationDateInterpretation.absoluteTime,
-          );
-        }
+      // Only schedule if in future and not colliding within 1 minute of master ID 0
+      if (scheduledDate.isAfter(now) &&
+          scheduledDate.difference(nextDailyDate).abs().inMinutes > 1) {
+        await _scheduleZonedNotification(
+          id: portion.dayNumber,
+          title: 'Daily Qur\'an Portion 📖',
+          body: 'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
+          scheduledDate: scheduledDate,
+          payload: portion.dayNumber.toString(),
+        );
       }
     }
+  }
+
+  /// Dispatches zoned schedule with exactAlarm mode, gracefully falling back to inexact while idle
+  Future<void> _scheduleZonedNotification({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduledDate,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    final details = _buildNotificationDetails();
+    try {
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        details,
+        payload: payload,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: matchDateTimeComponents,
+      );
+    } catch (_) {
+      try {
+        await _plugin.zonedSchedule(
+          id,
+          title,
+          body,
+          scheduledDate,
+          details,
+          payload: payload,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: matchDateTimeComponents,
+        );
+      } catch (_) {}
+    }
+  }
+
+  /// Schedules an immediate test reminder in [seconds] seconds (defaults to 5s)
+  /// to verify AlarmManager and heads-up banner notifications work on this device.
+  Future<void> scheduleTestReminder({int seconds = 5}) async {
+    if (!_initialized) await initialize();
+    final tzNow = tz.TZDateTime.now(tz.local);
+    final scheduledDate = tzNow.add(Duration(seconds: seconds));
+
+    await _scheduleZonedNotification(
+      id: 9999,
+      title: 'Daily Qur\'an Portion 📖 (Test)',
+      body: 'Reminder is working! Day 1: Al-Fatihah – An-Nisa',
+      scheduledDate: scheduledDate,
+      payload: '1',
+    );
   }
 
   /// Cancels the scheduled reminder for a given day (e.g. when completed).
@@ -356,6 +459,8 @@ class NotificationService {
         icon: '@mipmap/ic_launcher',
         playSound: true,
         enableVibration: true,
+        visibility: NotificationVisibility.public,
+        category: AndroidNotificationCategory.reminder,
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction(
             markCompletedActionId,

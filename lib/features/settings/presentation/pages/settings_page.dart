@@ -369,6 +369,78 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ],
                       ),
                     ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              LocaleKeys.settings.test_reminder_title.tr(),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.secondaryText,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              side: const BorderSide(color: AppColors.mistGray),
+                            ),
+                            onPressed: () async {
+                              final notif = ref.read(notificationServiceProvider);
+                              await notif.requestPermissions();
+                              await notif.showDailyReminderNow(
+                                dayNumber: 1,
+                                rangeDisplay: 'Al-Baqarah (Test)',
+                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(LocaleKeys.settings.test_sent.tr()),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Text(
+                              LocaleKeys.settings.test_now.tr(),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              side: const BorderSide(color: AppColors.ink),
+                            ),
+                            onPressed: () async {
+                              final notif = ref.read(notificationServiceProvider);
+                              await notif.requestPermissions();
+                              await notif.scheduleTestReminder(seconds: 5);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(LocaleKeys.settings.test_scheduled_5s.tr()),
+                                    duration: const Duration(seconds: 4),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Text(
+                              LocaleKeys.settings.test_in_5s.tr(),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ],
               ),
