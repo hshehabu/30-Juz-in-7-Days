@@ -35,7 +35,7 @@
     "step1_title": "30 Juz' in 7 Days",
     "step1_tagline": "Complete the Qur'an in seven days with a simple daily reminder and progress tracker.",
     "hadith_quote": "اقرأ القرآن في سبع ولا تزد على ذلك",
-    "hadith_ref": "Sahih al-Bukhari 5052",
+    "hadith_ref": "Sahih al-Bukhari 5054",
     "step1_cta": "Start My 7-Day Khatmah",
 
     "step2_title": "When would you like to begin?",
@@ -192,8 +192,8 @@
     "about_section": "ABOUT & FOUNDATION",
     "app_desc": "A companion for completing the Qur'an in seven days. This app helps you stay committed to your daily recitation.",
     "religious_foundation": "Religious Foundation",
-    "hadith_text": "The Prophet ﷺ instructed ʿAbdullah ibn ʿAmr to recite the Qur'an in seven days: \"Read it in seven days, and do not exceed that.\"",
-    "hadith_source": "Sahih al-Bukhari 5052",
+    "hadith_text": "Narrated ʿAbdullah bin ʿAmr: The Messenger of Allah ﷺ said: \"Read the Qur'an in a month.\" I said: \"I find strength [to read more],\" until he said: \"Then read it in seven days, and do not exceed that.\"",
+    "hadith_source": "Sahih al-Bukhari 5054",
     "version": "Version 1.0.0",
 
     "demo_section": "DEMO & TESTING",

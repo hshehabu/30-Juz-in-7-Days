@@ -106,13 +106,18 @@ class KhatmahConstants {
     ),
   ];
 
-  static const String hadithSource = 'Sahih al-Bukhari 5052';
-  static const String hadithSourceAr = 'صحيح البخاري (٥٠٥٢)';
+  static const String hadithSource = 'Sahih al-Bukhari 5054';
+  static const String hadithSourceAr = 'صحيح البخاري (5054)';
   static const String hadithText =
-      'The Prophet ﷺ instructed ʿAbdullah ibn ʿAmr to recite the Qur\'an in seven days: "Read it in seven days, and do not exceed that."';
+      'Narrated ʿAbdullah bin ʿAmr: The Messenger of Allah ﷺ said: "Read the Qur\'an in a month." I said: "I find strength [to read more]," until he said: "Then read it in seven days, and do not exceed that."';
   static const String hadithTextAr =
-      'عَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو رَضِيَ اللَّهُ عَنْهُمَا، قَالَ لِي رَسُولُ اللَّهِ ﷺ: «اقْرَأِ الْقُرْآنَ فِي سَبْعٍ، وَلَا تَزِدْ عَلَى ذَلِكَ».';
-  static const String hadithQuote = '«اقْرَأِ الْقُرْآنَ فِي كُلِّ سَبْعٍ»';
+      'عن عبد الله بن عمرو قال: قال رسول الله صلى الله عليه وسلم: «اقرأ القرآن في شهر، قلت: إني أجد قوة، حتى قال: فاقرأه في سبع، ولا تزد على ذلك».';
+  static const String hadithQuote = '«اقرأ القرآن في سبع ولا تزد على ذلك»';
+  static const String hadithQuoteEn =
+      '«Read the Qur\'an in seven days, and do not exceed that»';
+
+  static String getHadithQuote(bool isArabic) =>
+      isArabic ? hadithQuote : hadithQuoteEn;
 
   static String getHadithText(bool isArabic) =>
       isArabic ? hadithTextAr : hadithText;

@@ -542,8 +542,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      KhatmahConstants.hadithQuote,
-                      style: AppTypography.scholarlyQuote(AppColors.signalBlack, true).copyWith(
+                      KhatmahConstants.getHadithQuote(isAr),
+                      style: AppTypography.scholarlyQuote(AppColors.signalBlack, isAr).copyWith(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         height: 1.4,

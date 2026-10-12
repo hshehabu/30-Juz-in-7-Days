@@ -558,8 +558,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    KhatmahConstants.hadithQuote,
-                    style: AppTypography.scholarlyQuote(AppColors.signalBlack, true).copyWith(
+                    KhatmahConstants.getHadithQuote(isAr),
+                    style: AppTypography.scholarlyQuote(AppColors.signalBlack, isAr).copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
