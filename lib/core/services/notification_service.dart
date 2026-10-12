@@ -22,7 +22,7 @@ void notificationTapBackground(NotificationResponse response) async {
 class NotificationService {
   static const String markCompletedActionId = 'mark_completed';
   static const int dailyReminderId = 0;
-  static const String _channelId = 'khatmah_daily_reminders_v4';
+  static const String _channelId = 'khatmah_reminders_v5';
   static const String _channelName = 'Daily Khatmah Reminders';
   static const String _channelDesc =
       'Gentle daily reminders for your 7-day Qur\'an completion';
@@ -192,13 +192,12 @@ class NotificationService {
     return androidGranted || iosGranted;
   }
 
-  /// Schedules a daily notification at the user-configured [reminderTime].
+  /// Schedules daily notifications at the user-configured [reminderTime].
   /// Guarantees that:
-  /// 1. A Master Daily Recurring Reminder (ID 0) is ALWAYS scheduled for the very next occurrence
-  ///    of [reminderTime] (today if in the future, tomorrow if already passed), repeating daily via
-  ///    [matchDateTimeComponents: DateTimeComponents.time].
-  /// 2. Specific portion reminders are also scheduled for upcoming days of the challenge.
-  /// 3. Incomplete portions for today are never skipped.
+  /// 1. If today has an uncompleted portion and [reminderTime] is in the future today
+  ///    (or within the current minute), today's portion is scheduled immediately for today.
+  /// 2. Reminders for upcoming days of the challenge are scheduled directly at [reminderTime].
+  /// 3. Reminders are resilient even if challenge startDate is in the past or expired.
   Future<void> scheduleChallengeReminders({
     required DateTime startDate,
     TimeOfDay reminderTime = const TimeOfDay(hour: 19, minute: 0),
@@ -210,86 +209,108 @@ class NotificationService {
     await cancelAll();
 
     final now = tz.TZDateTime.now(tz.local);
-
-    // 1. Calculate the next occurrence of reminderTime (today if in future, else tomorrow)
-    var nextDailyDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      reminderTime.hour,
-      reminderTime.minute,
-      0,
-    );
-    if (!nextDailyDate.isAfter(now)) {
-      nextDailyDate = nextDailyDate.add(const Duration(days: 1));
-    }
-
-    // Determine what content to show for the daily reminder:
-    // Pick the earliest uncompleted portion from the schedule
-    DefaultPortionData? nextPortion;
-    for (final p in schedule) {
-      if (!completedDays.contains(p.dayNumber)) {
-        nextPortion = p;
-        break;
-      }
-    }
-
-    final dailyTitle = nextPortion != null
-        ? 'Daily Qur\'an Portion 📖'
-        : 'Daily Qur\'an Reminder 📖';
-    final dailyBody = nextPortion != null
-        ? 'Day ${nextPortion.dayNumber}: ${nextPortion.rangeDisplay}'
-        : 'Time for your daily Qur\'an reading. Keep up your blessed habit!';
-    final dailyPayload = nextPortion != null
-        ? nextPortion.dayNumber.toString()
-        : 'daily';
-
-    // 2. Schedule the MASTER recurring daily reminder (ID 0)
-    // with matchDateTimeComponents: DateTimeComponents.time
-    await _scheduleZonedNotification(
-      id: dailyReminderId,
-      title: dailyTitle,
-      body: dailyBody,
-      scheduledDate: nextDailyDate,
-      payload: dailyPayload,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
-
-    // 3. In addition, schedule specific portion reminders for each day in the schedule (IDs 1..7)
+    final today = DateTime(now.year, now.month, now.day);
     final normalizedStart =
         DateTime(startDate.year, startDate.month, startDate.day);
 
-    for (int i = 0; i < schedule.length; i++) {
-      final portion = schedule[i];
-      if (completedDays.contains(portion.dayNumber)) {
-        continue;
-      }
+    // Calculate which challenge day number today corresponds to (1-indexed)
+    final diffDays = today.difference(normalizedStart).inDays;
+    final currentDayNumber = diffDays + 1;
 
-      final targetDate = DateTime(
-        normalizedStart.year,
-        normalizedStart.month,
-        normalizedStart.day + i,
+    // Determine today's portion:
+    DefaultPortionData? todayPortion;
+    if (currentDayNumber >= 1 && currentDayNumber <= schedule.length) {
+      todayPortion = schedule.firstWhere(
+        (p) => p.dayNumber == currentDayNumber,
+        orElse: () => schedule[currentDayNumber - 1],
       );
-      final scheduledDate = tz.TZDateTime(
+    } else {
+      // Challenge finished or expired or out of bounds:
+      // Pick the earliest uncompleted portion from the schedule
+      for (final p in schedule) {
+        if (!completedDays.contains(p.dayNumber)) {
+          todayPortion = p;
+          break;
+        }
+      }
+    }
+
+    // 1. TODAY'S NOTIFICATION:
+    // If today's portion is NOT completed, schedule it for today if the time is in the future
+    // (or within the current minute):
+    if (todayPortion != null && !completedDays.contains(todayPortion.dayNumber)) {
+      final todayScheduledDate = tz.TZDateTime(
         tz.local,
-        targetDate.year,
-        targetDate.month,
-        targetDate.day,
+        today.year,
+        today.month,
+        today.day,
         reminderTime.hour,
         reminderTime.minute,
         0,
       );
 
-      // Only schedule if in future and not colliding within 1 minute of master ID 0
-      if (scheduledDate.isAfter(now) &&
-          scheduledDate.difference(nextDailyDate).abs().inMinutes > 1) {
+      final isFutureToday = todayScheduledDate.isAfter(now);
+      final isCurrentMinute = now.year == todayScheduledDate.year &&
+          now.month == todayScheduledDate.month &&
+          now.day == todayScheduledDate.day &&
+          now.hour == todayScheduledDate.hour &&
+          now.minute == todayScheduledDate.minute;
+
+      if (isFutureToday || isCurrentMinute) {
+        final fireTime = isFutureToday
+            ? todayScheduledDate
+            : now.add(const Duration(seconds: 2));
+
         await _scheduleZonedNotification(
-          id: portion.dayNumber,
+          id: todayPortion.dayNumber,
           title: 'Daily Qur\'an Portion 📖',
-          body: 'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
-          scheduledDate: scheduledDate,
-          payload: portion.dayNumber.toString(),
+          body: 'Day ${todayPortion.dayNumber}: ${todayPortion.rangeDisplay}',
+          scheduledDate: fireTime,
+          payload: todayPortion.dayNumber.toString(),
+        );
+      }
+    }
+
+    // 2. UPCOMING DAYS (Tomorrow, Day after tomorrow, up to 7 days ahead):
+    for (int dayOffset = 1; dayOffset <= 7; dayOffset++) {
+      final futureDate = today.add(Duration(days: dayOffset));
+      final futureTzDate = tz.TZDateTime(
+        tz.local,
+        futureDate.year,
+        futureDate.month,
+        futureDate.day,
+        reminderTime.hour,
+        reminderTime.minute,
+        0,
+      );
+
+      final targetDayNumber =
+          (currentDayNumber >= 1 && currentDayNumber <= schedule.length)
+              ? currentDayNumber + dayOffset
+              : dayOffset + 1;
+
+      if (targetDayNumber <= schedule.length) {
+        final portion = schedule.firstWhere(
+          (p) => p.dayNumber == targetDayNumber,
+          orElse: () => schedule[targetDayNumber - 1],
+        );
+        if (!completedDays.contains(portion.dayNumber)) {
+          await _scheduleZonedNotification(
+            id: portion.dayNumber,
+            title: 'Daily Qur\'an Portion 📖',
+            body: 'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
+            scheduledDate: futureTzDate,
+            payload: portion.dayNumber.toString(),
+          );
+        }
+      } else {
+        // Daily habit reminder after completion or past Day 7
+        await _scheduleZonedNotification(
+          id: 100 + dayOffset,
+          title: 'Daily Qur\'an Reminder 📖',
+          body: 'Time for your daily Qur\'an reading. Keep up your blessed habit!',
+          scheduledDate: futureTzDate,
+          payload: 'daily',
         );
       }
     }
@@ -302,9 +323,13 @@ class NotificationService {
     required String body,
     required tz.TZDateTime scheduledDate,
     String? payload,
-    DateTimeComponents? matchDateTimeComponents,
   }) async {
     final details = _buildNotificationDetails();
+    final canExact = await canScheduleExact();
+    final scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
     try {
       await _plugin.zonedSchedule(
         id,
@@ -313,10 +338,9 @@ class NotificationService {
         scheduledDate,
         details,
         payload: payload,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: matchDateTimeComponents,
       );
     } catch (_) {
       try {
@@ -330,7 +354,6 @@ class NotificationService {
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: matchDateTimeComponents,
         );
       } catch (_) {}
     }

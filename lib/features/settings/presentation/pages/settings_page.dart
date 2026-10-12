@@ -20,19 +20,45 @@ class SettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage>
+    with WidgetsBindingObserver {
   Timer? _tickerTimer;
+  bool _canScheduleExact = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkExactAlarmPermission();
     _tickerTimer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tickerTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkExactAlarmPermission();
+    }
+  }
+
+  Future<void> _checkExactAlarmPermission() async {
+    final notifService = ref.read(notificationServiceProvider);
+    final canExact = await notifService.canScheduleExact();
+    if (mounted && canExact != _canScheduleExact) {
+      final wasFalse = !_canScheduleExact && canExact;
+      setState(() {
+        _canScheduleExact = canExact;
+      });
+      if (wasFalse) {
+        ref.read(challengeStateProvider.notifier).rescheduleReminders();
+      }
+    }
   }
 
   void _onTick() {
@@ -260,6 +286,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         final notifService =
                             ref.read(notificationServiceProvider);
                         await notifService.requestPermissions();
+                        final canExact = await notifService.canScheduleExact();
+                        if (!canExact) {
+                          await notifService.requestExactAlarmsPermission();
+                        }
                       }
                       await ref
                           .read(challengeStateProvider.notifier)
@@ -313,6 +343,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           final notifService =
                               ref.read(notificationServiceProvider);
                           await notifService.requestPermissions();
+                          final canExact = await notifService.canScheduleExact();
+                          if (!canExact) {
+                            await notifService.requestExactAlarmsPermission();
+                          }
                           await ref
                               .read(challengeStateProvider.notifier)
                               .updateReminderSettings(
