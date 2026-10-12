@@ -150,10 +150,8 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                 children: [
                   if (_currentPage > 0)
                     IconButton(
-                      icon: Icon(
-                        isAr
-                            ? Icons.arrow_forward_ios_rounded
-                            : Icons.arrow_back_ios_new_rounded,
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
                         size: 18,
                       ),
                       onPressed: _prevPage,
@@ -440,7 +438,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                                   ),
                                 ),
                                 Text(
-                                  AppDateUtils.formatDate(DateTime.now()),
+                                  AppDateUtils.formatDate(DateTime.now(), context.locale.languageCode),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: AppColors.secondaryText,
                                   ),
@@ -496,7 +494,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                                 ),
                                 Text(
                                   !isToday
-                                      ? AppDateUtils.formatDate(_selectedStartDate)
+                                      ? AppDateUtils.formatDate(_selectedStartDate, context.locale.languageCode)
                                       : LocaleKeys.onboarding.select_future_date.tr(),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: !isToday
@@ -618,7 +616,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                               border: Border.all(color: AppColors.secondaryBorder),
                             ),
                             child: Text(
-                              AppDateUtils.formatTimeOfDay(_selectedReminderTime),
+                              AppDateUtils.formatTimeOfDay(_selectedReminderTime, context.locale.languageCode),
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: AppColors.ink,
                                 fontWeight: FontWeight.w700,
@@ -722,13 +720,13 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                       children: [
                         _buildSummaryRow(
                            LocaleKeys.onboarding.start_date.tr(),
-                          AppDateUtils.formatDateWithYear(_selectedStartDate),
+                          AppDateUtils.formatDateWithYear(_selectedStartDate, context.locale.languageCode),
                           theme,
                         ),
                         const Divider(height: 22, color: AppColors.secondaryNeutral),
                         _buildSummaryRow(
                           LocaleKeys.onboarding.end_date.tr(),
-                          AppDateUtils.formatDateWithYear(endDate),
+                          AppDateUtils.formatDateWithYear(endDate, context.locale.languageCode),
                           theme,
                         ),
                         const Divider(height: 22, color: AppColors.secondaryNeutral),
@@ -740,7 +738,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                         const Divider(height: 22, color: AppColors.secondaryNeutral),
                         _buildSummaryRow(
                           LocaleKeys.onboarding.daily_reminder.tr(),
-                          AppDateUtils.formatTimeOfDay(_selectedReminderTime),
+                          AppDateUtils.formatTimeOfDay(_selectedReminderTime, context.locale.languageCode),
                           theme,
                         ),
                       ],

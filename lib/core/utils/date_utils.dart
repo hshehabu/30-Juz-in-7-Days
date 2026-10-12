@@ -54,10 +54,11 @@ class AppDateUtils {
     return DateFormat('MMMM yyyy', loc).format(date);
   }
 
-  static String formatTimeOfDay(TimeOfDay time) {
+  static String formatTimeOfDay(TimeOfDay time, [String? locale]) {
+    final loc = _resolveLocale(locale);
     final now = DateTime.now();
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    return DateFormat('h:mm a').format(dt);
+    return DateFormat('h:mm a', loc).format(dt);
   }
 
   /// Normalizes a DateTime to start of day (midnight)

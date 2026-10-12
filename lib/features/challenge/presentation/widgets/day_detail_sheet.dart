@@ -109,7 +109,7 @@ class DayDetailSheet extends StatelessWidget {
                             ? LocaleKeys.common.today.tr()
                             : (isMissed
                                 ? LocaleKeys.common.missed.tr()
-                                : AppDateUtils.formatShortDate(portionDate))),
+                                : AppDateUtils.formatShortDate(portionDate, context.locale.languageCode))),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: isToday && !isCompleted
                           ? AppColors.buttonText
@@ -161,14 +161,14 @@ class DayDetailSheet extends StatelessWidget {
             _buildInfoRow(
               context,
               label: isAr ? 'التاريخ المقرر' : 'Scheduled Date',
-              value: AppDateUtils.formatDate(portionDate),
+              value: AppDateUtils.formatDate(portionDate, context.locale.languageCode),
             ),
             if (portion.isCompleted && portion.completedAt != null) ...[
               const Divider(height: 18),
               _buildInfoRow(
                 context,
                 label: isAr ? 'تاريخ الإكمال' : 'Completed On',
-                value: AppDateUtils.formatDate(portion.completedAt!),
+                value: AppDateUtils.formatDate(portion.completedAt!, context.locale.languageCode),
               ),
             ],
             if (portion.isAdjusted) ...[

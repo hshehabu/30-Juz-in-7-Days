@@ -164,7 +164,7 @@ class _MonthlyCycleHeatmapState extends State<MonthlyCycleHeatmap> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildStepButton(
-                icon: isAr ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+                icon: Icons.chevron_left_rounded,
                 onTap: _previousMonth,
                 tooltip: 'Previous Month',
               ),
@@ -177,7 +177,7 @@ class _MonthlyCycleHeatmapState extends State<MonthlyCycleHeatmap> {
                 ),
               ),
               _buildStepButton(
-                icon: isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                icon: Icons.chevron_right_rounded,
                 onTap: _nextMonth,
                 tooltip: 'Next Month',
               ),
@@ -415,7 +415,7 @@ class _MonthlyCycleHeatmapState extends State<MonthlyCycleHeatmap> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${AppDateUtils.formatShortDate(cycle.startDate)} – ${AppDateUtils.formatShortDate(cycle.endDate)}',
+                    '${AppDateUtils.formatShortDate(cycle.startDate, context.locale.languageCode)} – ${AppDateUtils.formatShortDate(cycle.endDate, context.locale.languageCode)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textMuted,
                       fontSize: 11,

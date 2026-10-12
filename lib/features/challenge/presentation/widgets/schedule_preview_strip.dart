@@ -75,10 +75,8 @@ class SchedulePreviewStrip extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(
-                        isAr
-                            ? Icons.arrow_back_rounded
-                            : Icons.arrow_forward_rounded,
+                      const Icon(
+                        Icons.arrow_forward_rounded,
                         size: 14,
                         color: AppColors.dustyGreenDark,
                       ),

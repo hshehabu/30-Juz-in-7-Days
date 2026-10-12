@@ -284,11 +284,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ),
                       subtitle: Text(
-                        AppDateUtils.formatTimeOfDay(currentReminderTime),
+                        AppDateUtils.formatTimeOfDay(currentReminderTime, context.locale.languageCode),
                         style: theme.textTheme.bodySmall,
                       ),
-                      trailing: Icon(
-                        isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
                         color: AppColors.mistGray,
                       ),
                       onTap: () async {
@@ -411,8 +411,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                trailing: Icon(
-                  isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
                   color: AppColors.textMuted,
                   size: 18,
                 ),

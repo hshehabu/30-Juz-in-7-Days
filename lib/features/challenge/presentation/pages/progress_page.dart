@@ -386,9 +386,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
         scrolledUnderElevation: 0,
         leading: IconButton(
           key: const Key('journey_step2_back_button'),
-          icon: Icon(
-            isAr ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
-            size: 28,
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 24,
             color: AppColors.signalBlack,
           ),
           onPressed: () {
@@ -574,10 +574,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                Icon(
-                                  isAr
-                                      ? Icons.arrow_back_rounded
-                                      : Icons.arrow_forward_rounded,
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
                                   size: 13,
                                   color: AppColors.dustyGreenDark,
                                 ),
@@ -1093,7 +1091,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                 statusBadge,
                 const SizedBox(width: 6),
                 Icon(
-                  isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                  Icons.chevron_right_rounded,
                   size: 18,
                   color: isToday
                       ? AppColors.dustyGreenDark
@@ -1155,8 +1153,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
               // Previous month
               IconButton(
                 key: const Key('journey_prev_month_button'),
-                icon: Icon(
-                  isAr ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
                   size: 22,
                 ),
                 color: AppColors.signalBlack,
@@ -1216,8 +1214,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
               // Next month
               IconButton(
                 key: const Key('journey_next_month_button'),
-                icon: Icon(
-                  isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
                   size: 22,
                 ),
                 color: AppColors.signalBlack,
@@ -1612,8 +1610,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                 ),
               )
             else
-              Icon(
-                isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+              const Icon(
+                Icons.chevron_right_rounded,
                 size: 16,
                 color: AppColors.mistGray,
               ),
