@@ -4,16 +4,54 @@ import 'package:intl/intl.dart';
 class AppDateUtils {
   AppDateUtils._();
 
-  static String formatDate(DateTime date) {
-    return DateFormat('MMMM d').format(date);
+  static String _resolveLocale(String? locale) {
+    if (locale != null && locale.isNotEmpty) {
+      return locale.startsWith('ar') ? 'ar' : locale;
+    }
+    final def = Intl.defaultLocale;
+    if (def != null && def.isNotEmpty) {
+      return def.startsWith('ar') ? 'ar' : def;
+    }
+    return 'en';
   }
 
-  static String formatDateWithYear(DateTime date) {
-    return DateFormat('MMMM d, yyyy').format(date);
+  static String formatDate(DateTime date, [String? locale]) {
+    final loc = _resolveLocale(locale);
+    if (loc == 'ar') {
+      return DateFormat('d MMMM', 'ar').format(date);
+    }
+    return DateFormat('MMMM d', loc).format(date);
   }
 
-  static String formatShortDate(DateTime date) {
-    return DateFormat('MMM d').format(date);
+  static String formatDateWithYear(DateTime date, [String? locale]) {
+    final loc = _resolveLocale(locale);
+    if (loc == 'ar') {
+      return DateFormat('d MMMM yyyy', 'ar').format(date);
+    }
+    return DateFormat('MMMM d, yyyy', loc).format(date);
+  }
+
+  static String formatShortDate(DateTime date, [String? locale]) {
+    final loc = _resolveLocale(locale);
+    if (loc == 'ar') {
+      return DateFormat('d MMM', 'ar').format(date);
+    }
+    return DateFormat('MMM d', loc).format(date);
+  }
+
+  static String formatWeekday(DateTime date, [String? locale]) {
+    final loc = _resolveLocale(locale);
+    return DateFormat('EEE', loc).format(date);
+  }
+
+  static String formatDayOfMonth(DateTime date, [String? locale]) {
+    final loc = _resolveLocale(locale);
+    return DateFormat('d', loc).format(date);
+  }
+
+  static String formatMonthYear(DateTime date, [String? locale]) {
+    final loc = _resolveLocale(locale);
+    return DateFormat('MMMM yyyy', loc).format(date);
   }
 
   static String formatTimeOfDay(TimeOfDay time) {

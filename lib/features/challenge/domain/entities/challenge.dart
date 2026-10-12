@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/khatmah_constants.dart';
 import '../../../../core/utils/date_utils.dart';
 import 'day_portion.dart';
 
@@ -52,15 +53,49 @@ class Challenge {
     return currentDayNumber > 7 && !isAllPortionsCompleted;
   }
 
-  /// Number of completed daily portions (0..7)
+  /// Set of traditional block indices (0..6) that are covered by completed portions
+  Set<int> get completedBlockIndices {
+    final blocks = <int>{};
+    for (final p in portions) {
+      if (p.isCompleted) {
+        final covered = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
+        if (covered.isNotEmpty) {
+          blocks.addAll(covered);
+        } else {
+          blocks.add((p.dayNumber - 1).clamp(0, 6));
+        }
+      }
+    }
+    return blocks;
+  }
+
+  /// Set of traditional block indices (0..6) that are scheduled in the remaining active days
+  Set<int> get upcomingScheduledBlockIndices {
+    final blocks = <int>{};
+    final day = currentDayNumber;
+    for (final p in portions) {
+      if (p.dayNumber >= day && p.dayNumber <= KhatmahConstants.totalDays) {
+        final covered = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
+        if (covered.isNotEmpty) {
+          blocks.addAll(covered);
+        } else {
+          blocks.add((p.dayNumber - 1).clamp(0, KhatmahConstants.totalDays - 1));
+        }
+      }
+    }
+    return blocks;
+  }
+
+  /// Number of completed portions (0..7).
+  /// Accurately counts all 7 traditional Quran portions covered,
+  /// including when adjusted portions cover multiple portions.
   int get completedPortionsCount {
-    return portions.where((p) => p.isCompleted).length;
+    return completedBlockIndices.length.clamp(0, KhatmahConstants.totalDays);
   }
 
   /// Completed percentage (0.0 .. 1.0)
   double get completionPercentage {
-    if (portions.isEmpty) return 0.0;
-    return completedPortionsCount / portions.length;
+    return (completedPortionsCount / KhatmahConstants.totalDays).clamp(0.0, 1.0);
   }
 
   int get completionPercentInt {
@@ -69,7 +104,7 @@ class Challenge {
 
   /// Returns true if all 7 portions are marked complete
   bool get isAllPortionsCompleted {
-    return completedPortionsCount == 7;
+    return completedPortionsCount >= KhatmahConstants.totalDays;
   }
 
   /// Days remaining in the 7-day challenge window
@@ -91,21 +126,42 @@ class Challenge {
   }
 
   /// True only if challenge is active and any past day (day < currentDayNumber) is incomplete
+  /// and its reading is neither completed nor scheduled in the remaining days.
   bool get isBehindSchedule {
     if (!isActive) return false;
     final day = currentDayNumber;
     if (day <= 1) return false;
-    return portions.any((p) => p.dayNumber < day && !p.isCompleted);
+    final coveredOrScheduled = {
+      ...completedBlockIndices,
+      ...upcomingScheduledBlockIndices,
+    };
+    return portions.any((p) {
+      if (p.dayNumber >= day || p.isCompleted) return false;
+      final covered = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
+      if (covered.isNotEmpty) {
+        return !covered.every(coveredOrScheduled.contains);
+      }
+      return !coveredOrScheduled.contains((p.dayNumber - 1).clamp(0, KhatmahConstants.totalDays - 1));
+    });
   }
 
-  /// Number of incomplete past portions
+  /// Number of incomplete past portions neither completed nor scheduled in remaining days
   int get missedPortionsCount {
     final day = currentDayNumber;
     if (day <= 1) return 0;
-    final maxPastDay = day > 7 ? 7 : day - 1;
-    return portions
-        .where((p) => p.dayNumber <= maxPastDay && !p.isCompleted)
-        .length;
+    final maxPastDay = day > KhatmahConstants.totalDays ? KhatmahConstants.totalDays : day - 1;
+    final coveredOrScheduled = {
+      ...completedBlockIndices,
+      ...upcomingScheduledBlockIndices,
+    };
+    return portions.where((p) {
+      if (p.dayNumber > maxPastDay || p.isCompleted) return false;
+      final covered = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
+      if (covered.isNotEmpty) {
+        return !covered.every(coveredOrScheduled.contains);
+      }
+      return !coveredOrScheduled.contains((p.dayNumber - 1).clamp(0, KhatmahConstants.totalDays - 1));
+    }).length;
   }
 
   Challenge copyWith({

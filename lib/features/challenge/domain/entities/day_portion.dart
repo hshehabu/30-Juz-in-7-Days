@@ -33,8 +33,17 @@ class DayPortion {
     int? surahCount,
     bool? isCompleted,
     DateTime? completedAt,
+    bool clearCompletedAt = false,
     bool? isAdjusted,
   }) {
+    final nextIsCompleted = isCompleted ?? this.isCompleted;
+    final DateTime? nextCompletedAt;
+    if (clearCompletedAt || (!nextIsCompleted && completedAt == null)) {
+      nextCompletedAt = null;
+    } else {
+      nextCompletedAt = completedAt ?? this.completedAt;
+    }
+
     return DayPortion(
       dayNumber: dayNumber ?? this.dayNumber,
       startSurah: startSurah ?? this.startSurah,
@@ -42,8 +51,8 @@ class DayPortion {
       startSurahAr: startSurahAr ?? this.startSurahAr,
       endSurahAr: endSurahAr ?? this.endSurahAr,
       surahCount: surahCount ?? this.surahCount,
-      isCompleted: isCompleted ?? this.isCompleted,
-      completedAt: completedAt ?? this.completedAt,
+      isCompleted: nextIsCompleted,
+      completedAt: nextCompletedAt,
       isAdjusted: isAdjusted ?? this.isAdjusted,
     );
   }

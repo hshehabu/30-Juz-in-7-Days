@@ -64,26 +64,81 @@ class ChallengeNotifier extends StateNotifier<ChallengeState> {
       if (current == null) return;
     }
 
+    final now = DateTime.now();
+    final optimisticPortions = current.portions.map((p) {
+      if (p.dayNumber == dayNumber) {
+        return p.copyWith(
+          isCompleted: true,
+          completedAt: now,
+        );
+      }
+      return p;
+    }).toList();
+
+    final allDone = optimisticPortions.every((p) => p.isCompleted);
+    final wasCompletedBefore = current.isAllPortionsCompleted;
+    final optimisticChallenge = current.copyWith(
+      portions: optimisticPortions,
+      isCompleted: allDone,
+    );
+
+    // Optimistically update state immediately so all screens re-render instantaneously
+    state = state.copyWith(
+      challenge: optimisticChallenge,
+      showCelebration: !wasCompletedBefore && allDone,
+    );
+
     try {
       final updated = await repository.markDayCompleted(dayNumber);
-      final wasCompletedBefore = current.isAllPortionsCompleted;
-      final isNowAllCompleted = updated.isAllPortionsCompleted;
-
       state = state.copyWith(
         challenge: updated,
-        showCelebration: !wasCompletedBefore && isNowAllCompleted,
+        showCelebration: !wasCompletedBefore && updated.isAllPortionsCompleted,
       );
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+      // Revert if persistent save failed
+      state = state.copyWith(
+        challenge: current,
+        errorMessage: e.toString(),
+      );
     }
   }
 
   Future<void> undoDayCompletion(int dayNumber) async {
+    var current = state.challenge;
+    if (current == null) {
+      current = await repository.getActiveChallenge();
+      if (current == null) return;
+    }
+
+    final optimisticPortions = current.portions.map((p) {
+      if (p.dayNumber == dayNumber) {
+        return p.copyWith(
+          isCompleted: false,
+          clearCompletedAt: true,
+        );
+      }
+      return p;
+    }).toList();
+
+    final optimisticChallenge = current.copyWith(
+      portions: optimisticPortions,
+      isCompleted: false,
+    );
+
+    // Optimistically update state immediately
+    state = state.copyWith(
+      challenge: optimisticChallenge,
+      showCelebration: false,
+    );
+
     try {
       final updated = await repository.undoDayCompletion(dayNumber);
       state = state.copyWith(challenge: updated);
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+      state = state.copyWith(
+        challenge: current,
+        errorMessage: e.toString(),
+      );
     }
   }
 
@@ -96,14 +151,6 @@ class ChallengeNotifier extends StateNotifier<ChallengeState> {
     }
   }
 
-  Future<void> resetToTraditionalSchedule() async {
-    try {
-      final updated = await repository.resetToTraditionalSchedule();
-      state = state.copyWith(challenge: updated);
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
-    }
-  }
 
   Future<void> restartCurrentChallenge() async {
     state = state.copyWith(isLoading: true);
@@ -176,3 +223,4 @@ class ChallengeNotifier extends StateNotifier<ChallengeState> {
     state = state.copyWith(showCelebration: false);
   }
 }
+

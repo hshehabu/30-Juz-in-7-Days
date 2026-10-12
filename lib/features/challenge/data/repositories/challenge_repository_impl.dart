@@ -22,7 +22,43 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
 
   @override
   Future<Challenge?> getActiveChallenge() async {
-    return localDataSource.getActiveChallenge();
+    final challenge = await localDataSource.getActiveChallenge();
+    if (challenge == null) return null;
+
+    // Sanitize any corrupted past portions that were falsely auto-completed by legacy code:
+    // If a later portion was adjusted (isAdjusted == true) and encompasses earlier
+    // portions' blocks, those earlier portions were missed and rescheduled.
+    // They must remain as missed historical records (isCompleted: false, completedAt: null).
+    final portions = challenge.portions;
+    bool needsSanitize = false;
+    final sanitizedPortions = portions.map((p) {
+      final pBlocks = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
+      final isRescheduledLater = portions.any((other) =>
+          other.dayNumber > p.dayNumber &&
+          other.isAdjusted &&
+          pBlocks.isNotEmpty &&
+          pBlocks.every(KhatmahConstants.getBlocksCovered(other.startSurah, other.endSurah).contains));
+
+      if (isRescheduledLater && (p.isCompleted || p.completedAt != null)) {
+        needsSanitize = true;
+        return p.copyWith(
+          isCompleted: false,
+          clearCompletedAt: true,
+        );
+      }
+      return p;
+    }).toList();
+
+    if (needsSanitize) {
+      final updatedChallenge = ChallengeModel.fromEntity(challenge).copyWithModel(
+        portions: sanitizedPortions,
+        isCompleted: sanitizedPortions.every((p) => p.isCompleted),
+      );
+      await localDataSource.saveActiveChallenge(updatedChallenge);
+      return updatedChallenge;
+    }
+
+    return challenge;
   }
 
   @override
@@ -61,10 +97,15 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     await storageService.setOnboardingCompleted(true);
 
     if (storageService.isReminderEnabled) {
-      await notificationService.scheduleChallengeReminders(
-        startDate: start,
-        schedule: KhatmahConstants.traditionalSchedule,
-      );
+      try {
+        await notificationService.scheduleChallengeReminders(
+          startDate: start,
+          reminderTime: reminderTime,
+          schedule: KhatmahConstants.traditionalSchedule,
+        );
+      } catch (_) {
+        // Best-effort notification scheduling
+      }
     }
 
     return challenge;
@@ -77,30 +118,38 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       throw StateError('No active challenge found');
     }
 
+    final now = DateTime.now();
     final updatedPortions = current.portions.map((p) {
       if (p.dayNumber == dayNumber) {
         return p.copyWith(
           isCompleted: true,
-          completedAt: DateTime.now(),
+          completedAt: now,
         );
       }
       return p;
     }).toList();
 
-    final allCompleted = updatedPortions.every((p) => p.isCompleted);
-
-    final updatedChallenge = current.copyWithModel(
+    final tempChallenge = ChallengeModel.fromEntity(current).copyWithModel(
       portions: updatedPortions,
+    );
+    final allCompleted = tempChallenge.isAllPortionsCompleted ||
+        updatedPortions.every((p) => p.isCompleted);
+
+    final updatedChallenge = tempChallenge.copyWithModel(
       isCompleted: allCompleted,
     );
 
     await localDataSource.saveActiveChallenge(updatedChallenge);
 
-    // Cancel notification for today's completed portion
-    await notificationService.cancelDayReminder(dayNumber);
+    // Cancel notification for today's completed portion (best-effort)
+    try {
+      await notificationService.cancelDayReminder(dayNumber);
 
-    if (allCompleted) {
-      await notificationService.showCompletionNotification();
+      if (allCompleted) {
+        await notificationService.showCompletionNotification();
+      }
+    } catch (_) {
+      // Best-effort notification handling
     }
 
     return updatedChallenge;
@@ -117,19 +166,34 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       if (p.dayNumber == dayNumber) {
         return p.copyWith(
           isCompleted: false,
-          completedAt: null,
+          clearCompletedAt: true,
         );
       }
       return p;
     }).toList();
 
-    final updatedChallenge = current.copyWithModel(
+    final updatedChallenge = ChallengeModel.fromEntity(current).copyWithModel(
       portions: updatedPortions,
       isCompleted: false,
     );
 
     await localDataSource.saveActiveChallenge(updatedChallenge);
     return updatedChallenge;
+  }
+
+  List<DefaultPortionData> _portionsToScheduleData(List<DayPortion> portions) {
+    return portions.map((p) {
+      return DefaultPortionData(
+        dayNumber: p.dayNumber,
+        startSurah: p.startSurah,
+        endSurah: p.endSurah,
+        startSurahAr: p.startSurahAr,
+        endSurahAr: p.endSurahAr,
+        surahCount: p.surahCount,
+        startSurahIndex: KhatmahConstants.getBlockIndexByStartSurah(p.startSurah),
+        endSurahIndex: KhatmahConstants.getBlockIndexByEndSurah(p.endSurah),
+      );
+    }).toList();
   }
 
   @override
@@ -144,45 +208,27 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     );
 
     await localDataSource.saveActiveChallenge(updatedChallenge);
-    return updatedChallenge;
-  }
 
-  @override
-  Future<Challenge> resetToTraditionalSchedule() async {
-    final current = await localDataSource.getActiveChallenge();
-    if (current == null) {
-      throw StateError('No active challenge found');
+    if (storageService.isReminderEnabled && !updatedChallenge.isCompleted) {
+      try {
+        final completedDays = updatedChallenge.portions
+            .where((p) => p.isCompleted)
+            .map((p) => p.dayNumber)
+            .toSet();
+        await notificationService.scheduleChallengeReminders(
+          startDate: updatedChallenge.startDate,
+          reminderTime: updatedChallenge.reminderTime,
+          schedule: _portionsToScheduleData(updatedChallenge.portions),
+          completedDays: completedDays,
+        );
+      } catch (_) {
+        // Best-effort notification rescheduling
+      }
     }
 
-    final completedMap = {
-      for (final p in current.portions) p.dayNumber: p.isCompleted
-    };
-    final completedAtMap = {
-      for (final p in current.portions) p.dayNumber: p.completedAt
-    };
-
-    final traditionalPortions =
-        KhatmahConstants.traditionalSchedule.map((data) {
-      return DayPortion(
-        dayNumber: data.dayNumber,
-        startSurah: data.startSurah,
-        endSurah: data.endSurah,
-        startSurahAr: data.startSurahAr,
-        endSurahAr: data.endSurahAr,
-        surahCount: data.surahCount,
-        isCompleted: completedMap[data.dayNumber] ?? false,
-        completedAt: completedAtMap[data.dayNumber],
-        isAdjusted: false,
-      );
-    }).toList();
-
-    final updatedChallenge = current.copyWithModel(
-      portions: traditionalPortions,
-    );
-
-    await localDataSource.saveActiveChallenge(updatedChallenge);
     return updatedChallenge;
   }
+
 
   @override
   Future<Challenge> restartCurrentChallenge() async {
@@ -204,7 +250,9 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     if (current != null) {
       await localDataSource.archiveCompletedChallenge(current);
     }
-    await notificationService.cancelAll();
+    try {
+      await notificationService.cancelAll();
+    } catch (_) {}
   }
 
   @override
@@ -223,18 +271,23 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       );
       await localDataSource.saveActiveChallenge(updatedChallenge);
 
-      if (enabled && !current.isCompleted) {
-        final completedDays = current.portions
-            .where((p) => p.isCompleted)
-            .map((p) => p.dayNumber)
-            .toSet();
-        await notificationService.scheduleChallengeReminders(
-          startDate: current.startDate,
-          schedule: KhatmahConstants.traditionalSchedule,
-          completedDays: completedDays,
-        );
+      if (enabled && !updatedChallenge.isCompleted) {
+        try {
+          final completedDays = updatedChallenge.portions
+              .where((p) => p.isCompleted)
+              .map((p) => p.dayNumber)
+              .toSet();
+          await notificationService.scheduleChallengeReminders(
+            startDate: updatedChallenge.startDate,
+            reminderTime: reminderTime,
+            schedule: _portionsToScheduleData(updatedChallenge.portions),
+            completedDays: completedDays,
+          );
+        } catch (_) {}
       } else {
-        await notificationService.cancelAll();
+        try {
+          await notificationService.cancelAll();
+        } catch (_) {}
       }
     }
   }

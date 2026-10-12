@@ -21,30 +21,10 @@ void notificationTapBackground(NotificationResponse response) async {
 
 class NotificationService {
   static const String markCompletedActionId = 'mark_completed';
-  static const String _channelId = 'khatmah_reminders_v2';
+  static const String _channelId = 'khatmah_daily_reminders_v3';
   static const String _channelName = 'Daily Khatmah Reminders';
   static const String _channelDesc =
       'Gentle daily reminders for your 7-day Qur\'an completion';
-
-  /// The 3 fixed drop hours per day: morning (6 AM), noon (12 PM), evening (6 PM)
-  static const List<int> dropHours = [6, 12, 18];
-
-  /// Distinct notification titles for each drop
-  static const List<String> _dropTitles = [
-    'Your morning portion is waiting \u{1F4D6}',
-    'Your Qur\'an portion \u2014 midday reminder',
-    'Your evening portion is waiting \u{1F319}',
-  ];
-
-  /// Distinct body copy tones: fresh start, midday check-in, evening reminder
-  static const List<String> _dropBodies = [
-    'A fresh morning. Begin with bismillah and open your portion.',
-    'Midday check-in \u2014 have you read your portion today?',
-    'An evening reminder. Don\'t let the day end without completing your portion.',
-  ];
-
-  /// Notification ID for a given day and drop: day1→[10,11,12] ... day7→[70,71,72]
-  static int notifId(int dayNumber, int dropIndex) => dayNumber * 10 + dropIndex;
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -198,11 +178,12 @@ class NotificationService {
     return androidGranted || iosGranted;
   }
 
-  /// Schedules 3 notifications per day (6 AM, 12 PM, 6 PM) for all 7 days.
-  /// Total: 21 scheduled notifications. IDs: dayNumber*10+dropIndex.
+  /// Schedules a daily notification at the user-configured [reminderTime] for each day of the challenge.
+  /// Total: 7 scheduled notifications. Notification ID: portion.dayNumber (1 to 7).
   /// Any day in [completedDays] is skipped.
   Future<void> scheduleChallengeReminders({
     required DateTime startDate,
+    TimeOfDay reminderTime = const TimeOfDay(hour: 19, minute: 0),
     required List<DefaultPortionData> schedule,
     Set<int> completedDays = const {},
   }) async {
@@ -210,12 +191,9 @@ class NotificationService {
 
     await cancelAll();
 
-    final canExact = await canScheduleExact();
-    final scheduleMode = canExact
-        ? AndroidScheduleMode.exactAllowWhileIdle
-        : AndroidScheduleMode.inexactAllowWhileIdle;
-
     final tzNow = tz.TZDateTime.now(tz.local);
+    final normalizedStart =
+        DateTime(startDate.year, startDate.month, startDate.day);
 
     for (int i = 0; i < schedule.length; i++) {
       final portion = schedule[i];
@@ -223,29 +201,46 @@ class NotificationService {
         continue; // Skip already completed days
       }
 
-      final targetDate = startDate.add(Duration(days: i));
+      final targetDate = DateTime(
+        normalizedStart.year,
+        normalizedStart.month,
+        normalizedStart.day + i,
+      );
+      final scheduledDate = tz.TZDateTime(
+        tz.local,
+        targetDate.year,
+        targetDate.month,
+        targetDate.day,
+        reminderTime.hour,
+        reminderTime.minute,
+        0,
+      );
 
-      for (int d = 0; d < dropHours.length; d++) {
-        final scheduledDate = tz.TZDateTime(
-          tz.local,
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-          dropHours[d],
-          0,
-          0,
-        );
-
-        // Only schedule future drop times
-        if (scheduledDate.isAfter(tzNow)) {
+      // Only schedule future reminder times
+      if (scheduledDate.isAfter(tzNow)) {
+        try {
           await _plugin.zonedSchedule(
-            notifId(portion.dayNumber, d),
-            _dropTitles[d],
-            '${_dropBodies[d]} — Day ${portion.dayNumber}: ${portion.rangeDisplay}',
+            portion.dayNumber,
+            'Daily Qur\'an Portion 📖',
+            'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
             scheduledDate,
             _buildNotificationDetails(),
             payload: portion.dayNumber.toString(),
-            androidScheduleMode: scheduleMode,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        } catch (_) {
+          // If exact alarm mode throws on Android (e.g. restriction without permission),
+          // fallback to inexact without crashing or stopping remaining days
+          await _plugin.zonedSchedule(
+            portion.dayNumber,
+            'Daily Qur\'an Portion 📖',
+            'Day ${portion.dayNumber}: ${portion.rangeDisplay}',
+            scheduledDate,
+            _buildNotificationDetails(),
+            payload: portion.dayNumber.toString(),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
           );
@@ -254,84 +249,27 @@ class NotificationService {
     }
   }
 
-  /// Kill switch: cancels all 3 drop notifications for a given day.
+  /// Cancels the scheduled reminder for a given day (e.g. when completed).
   Future<void> cancelDayReminder(int dayNumber) async {
     if (!_initialized) await initialize();
-    for (int d = 0; d < dropHours.length; d++) {
-      await _plugin.cancel(notifId(dayNumber, d));
-    }
+    await _plugin.cancel(dayNumber);
   }
 
-  /// Immediately shows a drop-specific reminder for a portion.
-  Future<void> showDropReminderNow({
+  /// Immediately shows the daily reminder for a portion.
+  Future<void> showDailyReminderNow({
     required int dayNumber,
     required String rangeDisplay,
-    required int dropIndex,
   }) async {
     if (!_initialized) await initialize();
-    final safeIndex = dropIndex.clamp(0, dropHours.length - 1);
     await _plugin.show(
-      notifId(dayNumber, safeIndex),
-      _dropTitles[safeIndex],
-      '${_dropBodies[safeIndex]} — Day $dayNumber: $rangeDisplay',
+      dayNumber,
+      'Daily Qur\'an Portion 📖',
+      'Day $dayNumber: $rangeDisplay',
       _buildNotificationDetails(),
       payload: dayNumber.toString(),
     );
   }
 
-  /// Legacy compatibility — shows the drop that best matches the current hour.
-  Future<void> showDailyReminderNow({
-    required int dayNumber,
-    required String rangeDisplay,
-  }) async {
-    final now = DateTime.now();
-    int dropIndex = 0;
-    if (now.hour >= dropHours[2]) {
-      dropIndex = 2;
-    } else if (now.hour >= dropHours[1]) {
-      dropIndex = 1;
-    }
-    await showDropReminderNow(
-      dayNumber: dayNumber,
-      rangeDisplay: rangeDisplay,
-      dropIndex: dropIndex,
-    );
-  }
-
-  /// Sends immediate test notification
-  Future<void> showTestNotification({int dayNumber = 1}) async {
-    if (!_initialized) await initialize();
-    await _plugin.show(
-      999,
-      '30 Juz\' in 7 Days 📖',
-      'Reminder: Day $dayNumber portion is waiting for you.',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDesc,
-          importance: Importance.max,
-          priority: Priority.max,
-          icon: '@mipmap/ic_launcher',
-          playSound: true,
-          enableVibration: true,
-          actions: <AndroidNotificationAction>[
-            AndroidNotificationAction(
-              markCompletedActionId,
-              'Mark as completed',
-              showsUserInterface: true,
-              cancelNotification: true,
-            ),
-          ],
-        ),
-        iOS: DarwinNotificationDetails(
-          sound: 'default',
-          categoryIdentifier: 'khatmah_reminder_category',
-        ),
-      ),
-      payload: dayNumber.toString(),
-    );
-  }
 
   /// Sends immediate celebration notification
   Future<void> showCompletionNotification() async {
@@ -360,7 +298,7 @@ class NotificationService {
   }
 
   /// Handles marking day completed in background isolate.
-  /// Also cancels all remaining drop notifications for the day (kill switch).
+  /// Also cancels the scheduled reminder for the day (kill switch).
   static Future<void> markDayCompletedInBackground(int dayNumber) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -388,7 +326,7 @@ class NotificationService {
         await storage.saveActiveChallengeJson(jsonEncode(data));
       }
 
-      // Kill switch: cancel remaining drop notifications for today
+      // Cancel notification for completed day
       try {
         final plugin = FlutterLocalNotificationsPlugin();
         const androidSettings =
@@ -396,9 +334,7 @@ class NotificationService {
         await plugin.initialize(
           const InitializationSettings(android: androidSettings),
         );
-        for (int d = 0; d < dropHours.length; d++) {
-          await plugin.cancel(notifId(dayNumber, d));
-        }
+        await plugin.cancel(dayNumber);
       } catch (_) {
         // Background cancellation is best-effort
       }
@@ -420,7 +356,6 @@ class NotificationService {
         icon: '@mipmap/ic_launcher',
         playSound: true,
         enableVibration: true,
-        onlyAlertOnce: true,
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction(
             markCompletedActionId,
