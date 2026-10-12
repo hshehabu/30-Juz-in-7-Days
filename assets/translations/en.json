@@ -166,11 +166,6 @@
     "next_reminder_in": "Next reminder in",
     "due_now": "Due now 🔔",
     "reminder_time": "Reminder Time",
-    "test_reminder_title": "Test Reminder",
-    "test_now": "Test Now",
-    "test_in_5s": "Test in 5s",
-    "test_sent": "Test notification sent! Check notification tray.",
-    "test_scheduled_5s": "Scheduled for 5 seconds! Keep screen on or lock it to test.",
 
     "language_section": "LANGUAGE",
     "app_language": "App Language",

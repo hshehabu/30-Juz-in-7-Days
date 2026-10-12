@@ -336,21 +336,6 @@ class NotificationService {
     }
   }
 
-  /// Schedules an immediate test reminder in [seconds] seconds (defaults to 5s)
-  /// to verify AlarmManager and heads-up banner notifications work on this device.
-  Future<void> scheduleTestReminder({int seconds = 5}) async {
-    if (!_initialized) await initialize();
-    final tzNow = tz.TZDateTime.now(tz.local);
-    final scheduledDate = tzNow.add(Duration(seconds: seconds));
-
-    await _scheduleZonedNotification(
-      id: 9999,
-      title: 'Daily Qur\'an Portion 📖 (Test)',
-      body: 'Reminder is working! Day 1: Al-Fatihah – An-Nisa',
-      scheduledDate: scheduledDate,
-      payload: '1',
-    );
-  }
 
   /// Cancels the scheduled reminder for a given day (e.g. when completed).
   Future<void> cancelDayReminder(int dayNumber) async {

@@ -198,11 +198,6 @@ class _SettingsKeys {
   final String next_reminder_in = 'settings.next_reminder_in';
   final String due_now = 'settings.due_now';
   final String reminder_time = 'settings.reminder_time';
-  final String test_reminder_title = 'settings.test_reminder_title';
-  final String test_now = 'settings.test_now';
-  final String test_in_5s = 'settings.test_in_5s';
-  final String test_sent = 'settings.test_sent';
-  final String test_scheduled_5s = 'settings.test_scheduled_5s';
 
   final String language_section = 'settings.language_section';
   final String app_language = 'settings.app_language';
