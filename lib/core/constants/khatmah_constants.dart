@@ -178,4 +178,25 @@ class KhatmahConstants {
     }
     return {};
   }
+
+  /// Blocks credited when a portion is completed: the blocks its surah range
+  /// covers, or its own day's block when the range is unrecognized.
+  static Set<int> blocksForPortion(
+      String startSurah, String endSurah, int dayNumber) {
+    final covered = getBlocksCovered(startSurah, endSurah);
+    if (covered.isNotEmpty) return covered;
+    return {(dayNumber - 1).clamp(0, totalDays - 1)};
+  }
+
+  /// Single source of truth for "is the whole khatmah read": every one of the
+  /// 7 traditional blocks is covered by at least one completed portion.
+  /// Each record is (startSurah, endSurah, dayNumber, isCompleted).
+  static bool isKhatmahComplete(
+      Iterable<(String, String, int, bool)> portions) {
+    final blocks = <int>{};
+    for (final (start, end, day, done) in portions) {
+      if (done) blocks.addAll(blocksForPortion(start, end, day));
+    }
+    return blocks.length >= totalDays;
+  }
 }

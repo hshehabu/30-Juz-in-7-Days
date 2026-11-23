@@ -9,16 +9,21 @@ class ChallengeCompletedDialog extends StatelessWidget {
   final VoidCallback onStartAnother;
   final VoidCallback onDismiss;
 
+  /// Opens the system share sheet; the Share button is hidden when null.
+  final VoidCallback? onShare;
+
   const ChallengeCompletedDialog({
     super.key,
     required this.onStartAnother,
     required this.onDismiss,
+    this.onShare,
   });
 
   static Future<void> show(
     BuildContext context, {
     required VoidCallback onStartAnother,
     required VoidCallback onDismiss,
+    VoidCallback? onShare,
   }) {
     return showDialog(
       context: context,
@@ -26,6 +31,7 @@ class ChallengeCompletedDialog extends StatelessWidget {
       builder: (_) => ChallengeCompletedDialog(
         onStartAnother: onStartAnother,
         onDismiss: onDismiss,
+        onShare: onShare,
       ),
     );
   }
@@ -122,6 +128,14 @@ class ChallengeCompletedDialog extends StatelessWidget {
               ),
               child: Text(LocaleKeys.completion_dialog.start_another.tr()),
             ),
+            if (onShare != null) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: onShare,
+                icon: const Icon(Icons.share_rounded, size: 18),
+                label: Text(LocaleKeys.share.button.tr()),
+              ),
+            ],
             const SizedBox(height: 8),
             TextButton(
               onPressed: () {

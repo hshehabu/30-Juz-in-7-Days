@@ -53,17 +53,61 @@ class Challenge {
     return currentDayNumber > 7 && !isAllPortionsCompleted;
   }
 
+  /// Whether the challenge is scheduled to begin on a future date.
+  bool get isUpcoming => currentDayNumber < 1 && !isAllPortionsCompleted;
+
+  /// Calendar days until Day 1 (0 once the challenge has begun).
+  int get daysUntilStart {
+    final day = currentDayNumber;
+    return day < 1 ? 1 - day : 0;
+  }
+
+  /// Calendar date on which [dayNumber] is scheduled.
+  DateTime dateForDay(int dayNumber) {
+    final start = AppDateUtils.dateOnly(startDate);
+    return DateTime(start.year, start.month, start.day + dayNumber - 1);
+  }
+
+  /// If [portion]'s reading was moved into a later adjusted day, returns that
+  /// day's number. Such a portion stays a "missed" historical record.
+  int? rescheduledToDay(DayPortion portion) {
+    final blocks =
+        KhatmahConstants.getBlocksCovered(portion.startSurah, portion.endSurah);
+    if (blocks.isEmpty) return null;
+    for (final other in portions) {
+      if (other.dayNumber > portion.dayNumber &&
+          other.isAdjusted &&
+          blocks.every(KhatmahConstants.getBlocksCovered(
+                  other.startSurah, other.endSurah)
+              .contains)) {
+        return other.dayNumber;
+      }
+    }
+    return null;
+  }
+
+  /// Whether a past, unread portion can still be checked in late
+  /// (e.g. the user read it but forgot to tap).
+  bool canLateCheckIn(DayPortion portion) {
+    return isActive &&
+        portion.dayNumber < currentDayNumber &&
+        !portion.isCompleted &&
+        rescheduledToDay(portion) == null;
+  }
+
+  /// Whether [portion] may be marked completed right now.
+  bool canMarkCompleted(DayPortion portion) {
+    if (portion.isCompleted || !isActive) return false;
+    return portion.dayNumber == currentDayNumber || canLateCheckIn(portion);
+  }
+
   /// Set of traditional block indices (0..6) that are covered by completed portions
   Set<int> get completedBlockIndices {
     final blocks = <int>{};
     for (final p in portions) {
       if (p.isCompleted) {
-        final covered = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
-        if (covered.isNotEmpty) {
-          blocks.addAll(covered);
-        } else {
-          blocks.add((p.dayNumber - 1).clamp(0, 6));
-        }
+        blocks.addAll(KhatmahConstants.blocksForPortion(
+            p.startSurah, p.endSurah, p.dayNumber));
       }
     }
     return blocks;

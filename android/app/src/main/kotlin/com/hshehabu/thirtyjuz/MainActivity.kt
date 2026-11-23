@@ -1,4 +1,4 @@
-package com.example.thirty_juz_in_7_days
+package com.hshehabu.thirtyjuz
 
 import io.flutter.embedding.android.FlutterActivity
 

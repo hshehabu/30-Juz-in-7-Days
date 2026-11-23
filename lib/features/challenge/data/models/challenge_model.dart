@@ -1,6 +1,7 @@
 import '../../domain/entities/challenge.dart';
 import '../../domain/entities/day_portion.dart';
 import 'day_portion_model.dart';
+import 'challenge_schema.dart';
 
 class ChallengeModel extends Challenge {
   const ChallengeModel({
@@ -14,7 +15,8 @@ class ChallengeModel extends Challenge {
     required super.createdAt,
   });
 
-  factory ChallengeModel.fromJson(Map<String, dynamic> json) {
+  factory ChallengeModel.fromJson(Map<String, dynamic> raw) {
+    final json = ChallengeSchema.upgrade(raw);
     final List<DayPortion> portionsList = (json['portions'] as List<dynamic>)
         .map<DayPortion>((e) => DayPortionModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -33,6 +35,7 @@ class ChallengeModel extends Challenge {
 
   Map<String, dynamic> toJson() {
     return {
+      ChallengeSchema.versionKey: ChallengeSchema.current,
       'id': id,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),

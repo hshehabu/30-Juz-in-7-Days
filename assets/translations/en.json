@@ -24,7 +24,11 @@
     "adjusted": "Adjusted",
     "upcoming": "Upcoming",
     "today": "Today",
-    "alhamdulillah": "Alhamdulillah"
+    "alhamdulillah": "Alhamdulillah",
+    "pages_count": "{} pages",
+    "page_range": "Pages {}–{}",
+    "duration_hm": "~{}h {}m",
+    "duration_m": "~{} min"
   },
   "navigation": {
     "today": "Today",
@@ -37,20 +41,17 @@
     "hadith_quote": "اقرأ القرآن في سبع ولا تزد على ذلك",
     "hadith_ref": "Sahih al-Bukhari 5054",
     "step1_cta": "Start My 7-Day Khatmah",
-
     "step2_title": "When would you like to begin?",
     "step2_desc": "Your 7-day khatmah will run for 7 consecutive days starting from your chosen date.",
     "option_today": "Today",
     "option_future": "Choose another date",
     "select_future_date": "Select a future start date",
     "continue_button": "Continue",
-
     "step3_title": "When should we remind you?",
     "step3_desc": "We will send one gentle daily reminder with today's assigned reading portion.",
     "reminder_at": "Daily reminder at:",
-    "reminder_note": "No spam or aggressive messaging. If you complete your portion early, we will not send that day's reminder.",
+    "reminder_note": "No spam. If you complete your portion early, that day's reminder is cancelled automatically.",
     "review_plan": "Review Plan",
-
     "step4_title": "Your 7-Day Khatmah",
     "step4_desc": "Please review your challenge plan before beginning.",
     "start_date": "Start Date",
@@ -58,7 +59,8 @@
     "day1_portion": "Day 1 Portion",
     "day1_portion_value": "Al-Baqarah → An-Nisa (3 surahs)",
     "daily_reminder": "Daily Reminder",
-    "start_khatmah": "Start Khatmah"
+    "start_khatmah": "Start Khatmah",
+    "permission_note": "Next, we will ask permission to send notifications so we can remind you."
   },
   "home": {
     "today_portion": "TODAY'S PORTION",
@@ -74,7 +76,15 @@
     "concluded_desc": "Your 7-day period has concluded. You can start a fresh 7-day journey whenever you are ready.",
     "start_new": "Start New Khatmah",
     "portions_completed_count": "{} of {} portions completed",
-    "view_journey": "View Journey"
+    "view_journey": "View Journey",
+    "upcoming_title": "Your khatmah begins soon",
+    "starts_in_days": "Starts in {} days",
+    "starts_tomorrow": "Starts tomorrow",
+    "upcoming_desc": "Day 1 begins on {}. Here is your first portion so you can prepare.",
+    "first_portion": "FIRST PORTION",
+    "start_today_instead": "Start today instead",
+    "continue_from": "Continue from page {}",
+    "backup_prompt": "Keep this khatmah safe by saving a backup file."
   },
   "progress": {
     "title": "Your Journey",
@@ -123,13 +133,14 @@
     "stat_stream_summary": "{} cycle • {} portions • {}% consistency",
     "approx_reading_time": "{} Surahs • ~ {} min",
     "plan_details": "Full Plan",
-    "load_demo_data": "Load Demo Past Cycles",
-    "clear_demo_data": "Clear Demo History",
-    "demo_data_loaded": "Demo cycles loaded! Explore past months.",
-    "demo_data_cleared": "Demo history cleared.",
     "expand_cycle": "Tap to view daily portions",
     "collapse_cycle": "Tap to collapse",
-    "cycle_portions_title": "7-Day Portions"
+    "cycle_portions_title": "7-Day Portions",
+    "lifetime_title": "YOUR LIFETIME",
+    "stat_khatmahs": "Khatmahs",
+    "stat_on_time": "On time",
+    "stat_avg_days": "Avg. days",
+    "reading_time_pages": "{} pages • {}"
   },
   "day_detail": {
     "portion_title": "Day {} Portion",
@@ -138,7 +149,22 @@
     "surah_number": "Surah {}",
     "mark_completed": "Mark as Completed",
     "undo_completion": "Undo Completion",
-    "reading_order": "Reading Order: {}"
+    "reading_order": "Reading Order: {}",
+    "scheduled_date": "Scheduled Date",
+    "completed_on": "Completed On",
+    "schedule_status": "Schedule Status",
+    "adjusted_status": "Adjusted to fit remaining window",
+    "rescheduled_to": "Moved into Day {}",
+    "late_check_in": "I read this portion",
+    "late_check_in_hint": "Forgot to tap on the day? You can still record it.",
+    "pages_label": "Pages",
+    "reading_time": "Estimated time",
+    "sitting_fajr": "After Fajr",
+    "sitting_dhuhr": "After Dhuhr",
+    "sitting_asr": "After Asr",
+    "sitting_maghrib": "After Maghrib",
+    "sitting_isha": "After Isha",
+    "page_note": "Page numbers follow the standard 604-page Madani mushaf."
   },
   "adjust_plan": {
     "title": "Adjust Remaining Plan",
@@ -166,13 +192,11 @@
     "next_reminder_in": "Next reminder in",
     "due_now": "Due now 🔔",
     "reminder_time": "Reminder Time",
-
     "language_section": "LANGUAGE",
     "app_language": "App Language",
     "choose_language": "Choose Language",
     "english": "English",
     "arabic": "العربية (Arabic)",
-
     "management_section": "CURRENT KHATMAH",
     "started": "Started",
     "ends": "Ends",
@@ -183,24 +207,49 @@
     "restart_button": "Restart Khatmah",
     "new_button": "New Khatmah",
     "restart_dialog_title": "Restart your khatmah?",
-    "restart_dialog_desc": "Your current progress will be reset back to Day 1. This action cannot be undone.",
+    "restart_dialog_desc": "You will begin again from Day 1 today. Your current attempt is kept in your Journey history.",
     "restart_confirm": "Restart",
     "new_dialog_title": "Start a new khatmah?",
     "new_dialog_desc": "Your current challenge is still in progress. Starting a new one will archive your current progress.",
     "new_confirm": "Start New",
-
     "about_section": "ABOUT & FOUNDATION",
     "app_desc": "A companion for completing the Qur'an in seven days. This app helps you stay committed to your daily recitation.",
     "religious_foundation": "Religious Foundation",
     "hadith_text": "Narrated ʿAbdullah bin ʿAmr: The Messenger of Allah ﷺ said: \"Read the Qur'an in a month.\" I said: \"I find strength [to read more],\" until he said: \"Then read it in seven days, and do not exceed that.\"",
     "hadith_source": "Sahih al-Bukhari 5054",
-    "version": "Version 1.0.0",
-
-    "demo_section": "DEMO & TESTING",
-    "load_demo_history": "Load Demo Past Cycles",
-    "load_demo_history_desc": "Populate past months with completed 7-day cycles for testing",
-    "clear_history": "Clear History",
-    "clear_history_desc": "Remove completed and demo khatmahs from history"
+    "version": "Version 1.1.0",
+    "next_reminder_none": "No reminder scheduled",
+    "countdown_hms": "{}h {}m {}s",
+    "countdown_ms": "{}m {}s",
+    "countdown_s": "{}s",
+    "health_blocked": "Notifications are blocked",
+    "health_blocked_desc": "Reminders cannot appear until you allow notifications.",
+    "health_inexact": "Reminders may arrive late",
+    "health_inexact_desc": "Allow \"Alarms & reminders\" so reminders fire on time.",
+    "fix": "Fix",
+    "follow_up": "Follow-up reminder",
+    "follow_up_desc": "A second gentle nudge if today's portion is still unread",
+    "follow_up_time": "Follow-up time",
+    "follow_up_must_be_later": "Choose a time after your daily reminder.",
+    "khatmah_section": "KHATMAH PREFERENCES",
+    "auto_continue": "Continuous khatmah",
+    "auto_continue_desc": "Begin the next 7-day khatmah automatically after finishing one",
+    "auto_continue_started": "A new 7-day khatmah has begun. May Allah bless it.",
+    "backup_section": "BACKUP",
+    "import_backup": "Restore backup",
+    "import_backup_desc": "From a backup file or text you saved earlier",
+    "import_hint": "Paste backup text here",
+    "import_confirm": "Restore",
+    "import_done": "Backup restored",
+    "import_failed": "That does not look like a valid backup.",
+    "import_warning": "Restoring replaces your current progress on this device.",
+    "save_backup_file": "Save backup file",
+    "save_backup_file_desc": "Save or send your progress as a file (Drive, Telegram, email…)",
+    "last_backup": "Last saved {}",
+    "restore_from_file": "Choose backup file",
+    "restore_from_text": "Paste backup text",
+    "backup_subject": "30 Juz' in 7 Days backup",
+    "backup_auto_note": "When your phone's backup is turned on, your progress is also saved to it automatically."
   },
   "confirmation": {
     "mark_completed_title": "Mark Portion Completed?",
@@ -220,5 +269,47 @@
     "apply_plan_desc": "This will redistribute your remaining portions across your remaining days. This updates your daily schedule.",
     "apply_plan_toast": "Plan adjusted successfully",
     "show_banner": "Show Options"
+  },
+  "reading": {
+    "plan_title": "READING PLAN",
+    "plan_hint": "Tick each part as you finish it. We will remember where you stopped.",
+    "parts_done": "{} of {} done",
+    "pages_short": "p. {}–{}",
+    "picker_title": "Reading plan",
+    "picker_desc": "Default for days you have not finished. Days you set individually keep their own plan.",
+    "option_prayers": "By prayer",
+    "option_prayers_desc": "Five parts, one after each daily prayer",
+    "option_three": "3 sittings",
+    "option_three_desc": "Three equal parts through the day",
+    "option_two": "2 sittings",
+    "option_two_desc": "Two halves, for example morning and evening",
+    "option_off": "Off",
+    "option_off_desc": "No plan. Just mark the day complete when you finish.",
+    "sitting_label": "Sitting {}",
+    "customize": "Change reading plan",
+    "day_picker_title": "Day {} reading plan",
+    "day_picker_desc": "Changes this day only. The default for all days is in Settings.",
+    "use_default": "Use default",
+    "use_default_desc": "Follow the default plan ({})",
+    "this_day_only": "This day only"
+  },
+  "permissions": {
+    "explainer_title": "Allow on-time reminders",
+    "explainer_desc": "To remind you exactly at your chosen time, Android needs the \"Alarms & reminders\" permission. It is only used for your daily Qur'an reminder.",
+    "open_settings": "Open Settings",
+    "not_now": "Not now"
+  },
+  "errors": {
+    "generic": "Something went wrong. Your last change may not have been saved."
+  },
+  "a11y": {
+    "day_status": "Day {}, {}",
+    "percent_complete": "{} percent complete",
+    "show_details": "Show details"
+  },
+  "share": {
+    "button": "Share",
+    "completion_message": "Alhamdulillah! I completed a full khatmah of the Qur'an in 7 days ({} – {}) with 30 Juz' in 7 Days.",
+    "subject": "Khatmah completed"
   }
 }

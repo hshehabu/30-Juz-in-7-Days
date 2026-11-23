@@ -51,6 +51,10 @@ void main() {
     expect(find.text('Mark as Completed'), findsOneWidget);
     expect(find.text('Today'), findsOneWidget);
 
+    // The sheet now includes page counts and a sitting split, so scroll the
+    // action into view before tapping.
+    await tester.ensureVisible(find.text('Mark as Completed'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Mark as Completed'));
     await tester.pumpAndSettle();
 

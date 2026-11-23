@@ -73,15 +73,24 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       ),
       ProgressPage(
         key: _progressPageKey,
+        isCurrentTab: _currentIndex == 1,
         onStartNewKhatmah: _openStartNewKhatmahFlow,
         onBackToHome: _onBackToHome,
       ),
       SettingsPage(
+        isCurrentTab: _currentIndex == 2,
         onStartNewKhatmah: _openStartNewKhatmahFlow,
       ),
     ];
 
-    return Scaffold(
+    // Back handling: Home lets the system pop (exit). Journey handles its own
+    // steps via its PopScope while visible. Settings returns to Home.
+    return PopScope(
+      canPop: _currentIndex != 2,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _currentIndex == 2) _navigateToTab(0);
+      },
+      child: Scaffold(
       body: IndexedStack(
         index: _currentIndex,
         children: pages,
@@ -116,6 +125,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           ],
         ),
       ),
+    ),
     );
   }
 }

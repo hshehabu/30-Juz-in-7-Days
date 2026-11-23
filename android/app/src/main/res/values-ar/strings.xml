@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">٣٠ جزءاً في ٧ أيام</string>
+    <string name="widget_description">ورد اليوم وتقدمك وزر سريع لتسجيل القراءة</string>
+    <string name="widget_open_app">افتح التطبيق لإعداد ختمتك</string>
+    <string name="widget_mark_done">تمت القراءة</string>
+</resources>

@@ -33,6 +33,8 @@ class _FakeNotificationService extends NotificationService {
     TimeOfDay reminderTime = const TimeOfDay(hour: 19, minute: 0),
     required List<DefaultPortionData> schedule,
     Set<int> completedDays = const {},
+    TimeOfDay? followUpTime,
+    String? languageCode,
   }) async {
     scheduledReminderTime = reminderTime;
   }

@@ -12,6 +12,11 @@ abstract class LocaleKeys {
   static const completion_dialog = _CompletionDialogKeys();
   static const settings = _SettingsKeys();
   static const confirmation = _ConfirmationKeys();
+  static const reading = _ReadingKeys();
+  static const permissions = _PermissionsKeys();
+  static const errors = _ErrorsKeys();
+  static const a11y = _A11yKeys();
+  static const share = _ShareKeys();
 }
 
 class _CommonKeys {
@@ -41,6 +46,10 @@ class _CommonKeys {
   final String upcoming = 'common.upcoming';
   final String today = 'common.today';
   final String alhamdulillah = 'common.alhamdulillah';
+  final String pages_count = 'common.pages_count';
+  final String page_range = 'common.page_range';
+  final String duration_hm = 'common.duration_hm';
+  final String duration_m = 'common.duration_m';
 }
 
 class _NavigationKeys {
@@ -57,20 +66,17 @@ class _OnboardingKeys {
   final String hadith_quote = 'onboarding.hadith_quote';
   final String hadith_ref = 'onboarding.hadith_ref';
   final String step1_cta = 'onboarding.step1_cta';
-
   final String step2_title = 'onboarding.step2_title';
   final String step2_desc = 'onboarding.step2_desc';
   final String option_today = 'onboarding.option_today';
   final String option_future = 'onboarding.option_future';
   final String select_future_date = 'onboarding.select_future_date';
   final String continue_button = 'onboarding.continue_button';
-
   final String step3_title = 'onboarding.step3_title';
   final String step3_desc = 'onboarding.step3_desc';
   final String reminder_at = 'onboarding.reminder_at';
   final String reminder_note = 'onboarding.reminder_note';
   final String review_plan = 'onboarding.review_plan';
-
   final String step4_title = 'onboarding.step4_title';
   final String step4_desc = 'onboarding.step4_desc';
   final String start_date = 'onboarding.start_date';
@@ -79,6 +85,7 @@ class _OnboardingKeys {
   final String day1_portion_value = 'onboarding.day1_portion_value';
   final String daily_reminder = 'onboarding.daily_reminder';
   final String start_khatmah = 'onboarding.start_khatmah';
+  final String permission_note = 'onboarding.permission_note';
 }
 
 class _HomeKeys {
@@ -97,6 +104,14 @@ class _HomeKeys {
   final String start_new = 'home.start_new';
   final String portions_completed_count = 'home.portions_completed_count';
   final String view_journey = 'home.view_journey';
+  final String upcoming_title = 'home.upcoming_title';
+  final String starts_in_days = 'home.starts_in_days';
+  final String starts_tomorrow = 'home.starts_tomorrow';
+  final String upcoming_desc = 'home.upcoming_desc';
+  final String first_portion = 'home.first_portion';
+  final String start_today_instead = 'home.start_today_instead';
+  final String continue_from = 'home.continue_from';
+  final String backup_prompt = 'home.backup_prompt';
 }
 
 class _ProgressKeys {
@@ -147,13 +162,14 @@ class _ProgressKeys {
   final String stat_stream_summary = 'progress.stat_stream_summary';
   final String approx_reading_time = 'progress.approx_reading_time';
   final String plan_details = 'progress.plan_details';
-  final String load_demo_data = 'progress.load_demo_data';
-  final String clear_demo_data = 'progress.clear_demo_data';
-  final String demo_data_loaded = 'progress.demo_data_loaded';
-  final String demo_data_cleared = 'progress.demo_data_cleared';
   final String expand_cycle = 'progress.expand_cycle';
   final String collapse_cycle = 'progress.collapse_cycle';
   final String cycle_portions_title = 'progress.cycle_portions_title';
+  final String lifetime_title = 'progress.lifetime_title';
+  final String stat_khatmahs = 'progress.stat_khatmahs';
+  final String stat_on_time = 'progress.stat_on_time';
+  final String stat_avg_days = 'progress.stat_avg_days';
+  final String reading_time_pages = 'progress.reading_time_pages';
 }
 
 class _DayDetailKeys {
@@ -165,6 +181,21 @@ class _DayDetailKeys {
   final String mark_completed = 'day_detail.mark_completed';
   final String undo_completion = 'day_detail.undo_completion';
   final String reading_order = 'day_detail.reading_order';
+  final String scheduled_date = 'day_detail.scheduled_date';
+  final String completed_on = 'day_detail.completed_on';
+  final String schedule_status = 'day_detail.schedule_status';
+  final String adjusted_status = 'day_detail.adjusted_status';
+  final String rescheduled_to = 'day_detail.rescheduled_to';
+  final String late_check_in = 'day_detail.late_check_in';
+  final String late_check_in_hint = 'day_detail.late_check_in_hint';
+  final String pages_label = 'day_detail.pages_label';
+  final String reading_time = 'day_detail.reading_time';
+  final String sitting_fajr = 'day_detail.sitting_fajr';
+  final String sitting_dhuhr = 'day_detail.sitting_dhuhr';
+  final String sitting_asr = 'day_detail.sitting_asr';
+  final String sitting_maghrib = 'day_detail.sitting_maghrib';
+  final String sitting_isha = 'day_detail.sitting_isha';
+  final String page_note = 'day_detail.page_note';
 }
 
 class _AdjustPlanKeys {
@@ -198,13 +229,11 @@ class _SettingsKeys {
   final String next_reminder_in = 'settings.next_reminder_in';
   final String due_now = 'settings.due_now';
   final String reminder_time = 'settings.reminder_time';
-
   final String language_section = 'settings.language_section';
   final String app_language = 'settings.app_language';
   final String choose_language = 'settings.choose_language';
   final String english = 'settings.english';
   final String arabic = 'settings.arabic';
-
   final String management_section = 'settings.management_section';
   final String started = 'settings.started';
   final String ends = 'settings.ends';
@@ -220,19 +249,44 @@ class _SettingsKeys {
   final String new_dialog_title = 'settings.new_dialog_title';
   final String new_dialog_desc = 'settings.new_dialog_desc';
   final String new_confirm = 'settings.new_confirm';
-
   final String about_section = 'settings.about_section';
   final String app_desc = 'settings.app_desc';
   final String religious_foundation = 'settings.religious_foundation';
   final String hadith_text = 'settings.hadith_text';
   final String hadith_source = 'settings.hadith_source';
   final String version = 'settings.version';
-
-  final String demo_section = 'settings.demo_section';
-  final String load_demo_history = 'settings.load_demo_history';
-  final String load_demo_history_desc = 'settings.load_demo_history_desc';
-  final String clear_history = 'settings.clear_history';
-  final String clear_history_desc = 'settings.clear_history_desc';
+  final String next_reminder_none = 'settings.next_reminder_none';
+  final String countdown_hms = 'settings.countdown_hms';
+  final String countdown_ms = 'settings.countdown_ms';
+  final String countdown_s = 'settings.countdown_s';
+  final String health_blocked = 'settings.health_blocked';
+  final String health_blocked_desc = 'settings.health_blocked_desc';
+  final String health_inexact = 'settings.health_inexact';
+  final String health_inexact_desc = 'settings.health_inexact_desc';
+  final String fix = 'settings.fix';
+  final String follow_up = 'settings.follow_up';
+  final String follow_up_desc = 'settings.follow_up_desc';
+  final String follow_up_time = 'settings.follow_up_time';
+  final String follow_up_must_be_later = 'settings.follow_up_must_be_later';
+  final String khatmah_section = 'settings.khatmah_section';
+  final String auto_continue = 'settings.auto_continue';
+  final String auto_continue_desc = 'settings.auto_continue_desc';
+  final String auto_continue_started = 'settings.auto_continue_started';
+  final String backup_section = 'settings.backup_section';
+  final String import_backup = 'settings.import_backup';
+  final String import_backup_desc = 'settings.import_backup_desc';
+  final String import_hint = 'settings.import_hint';
+  final String import_confirm = 'settings.import_confirm';
+  final String import_done = 'settings.import_done';
+  final String import_failed = 'settings.import_failed';
+  final String import_warning = 'settings.import_warning';
+  final String save_backup_file = 'settings.save_backup_file';
+  final String save_backup_file_desc = 'settings.save_backup_file_desc';
+  final String last_backup = 'settings.last_backup';
+  final String restore_from_file = 'settings.restore_from_file';
+  final String restore_from_text = 'settings.restore_from_text';
+  final String backup_subject = 'settings.backup_subject';
+  final String backup_auto_note = 'settings.backup_auto_note';
 }
 
 class _ConfirmationKeys {
@@ -254,4 +308,56 @@ class _ConfirmationKeys {
   final String apply_plan_desc = 'confirmation.apply_plan_desc';
   final String apply_plan_toast = 'confirmation.apply_plan_toast';
   final String show_banner = 'confirmation.show_banner';
+}
+
+class _ReadingKeys {
+  const _ReadingKeys();
+  final String plan_title = 'reading.plan_title';
+  final String plan_hint = 'reading.plan_hint';
+  final String parts_done = 'reading.parts_done';
+  final String pages_short = 'reading.pages_short';
+  final String picker_title = 'reading.picker_title';
+  final String picker_desc = 'reading.picker_desc';
+  final String option_prayers = 'reading.option_prayers';
+  final String option_prayers_desc = 'reading.option_prayers_desc';
+  final String option_three = 'reading.option_three';
+  final String option_three_desc = 'reading.option_three_desc';
+  final String option_two = 'reading.option_two';
+  final String option_two_desc = 'reading.option_two_desc';
+  final String option_off = 'reading.option_off';
+  final String option_off_desc = 'reading.option_off_desc';
+  final String sitting_label = 'reading.sitting_label';
+  final String customize = 'reading.customize';
+  final String day_picker_title = 'reading.day_picker_title';
+  final String day_picker_desc = 'reading.day_picker_desc';
+  final String use_default = 'reading.use_default';
+  final String use_default_desc = 'reading.use_default_desc';
+  final String this_day_only = 'reading.this_day_only';
+}
+
+class _PermissionsKeys {
+  const _PermissionsKeys();
+  final String explainer_title = 'permissions.explainer_title';
+  final String explainer_desc = 'permissions.explainer_desc';
+  final String open_settings = 'permissions.open_settings';
+  final String not_now = 'permissions.not_now';
+}
+
+class _ErrorsKeys {
+  const _ErrorsKeys();
+  final String generic = 'errors.generic';
+}
+
+class _A11yKeys {
+  const _A11yKeys();
+  final String day_status = 'a11y.day_status';
+  final String percent_complete = 'a11y.percent_complete';
+  final String show_details = 'a11y.show_details';
+}
+
+class _ShareKeys {
+  const _ShareKeys();
+  final String button = 'share.button';
+  final String completion_message = 'share.completion_message';
+  final String subject = 'share.subject';
 }

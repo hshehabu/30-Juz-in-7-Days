@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Circular progress ring badge showing progress count and label in the center.
@@ -27,47 +29,53 @@ class CircularProgressBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = total > 0 ? (completed / total).clamp(0.0, 1.0) : 0.0;
 
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: Size(size, size),
-            painter: _CircularProgressPainter(
-              progress: progress,
-              strokeWidth: strokeWidth,
-              progressColor: progressColor,
-              trackColor: trackColor,
+    return Semantics(
+      label: LocaleKeys.a11y.percent_complete.tr(
+        args: [(progress * 100).round().toString()],
+      ),
+      excludeSemantics: true,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            CustomPaint(
+              size: Size(size, size),
+              painter: _CircularProgressPainter(
+                progress: progress,
+                strokeWidth: strokeWidth,
+                progressColor: progressColor,
+                trackColor: trackColor,
+              ),
             ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '$completed/$total',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.signalBlack,
-                  height: 1.1,
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$completed/$total',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.signalBlack,
+                    height: 1.1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                sublabel,
-                style: const TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.secondaryText,
-                  height: 1.0,
+                const SizedBox(height: 2),
+                Text(
+                  sublabel,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.secondaryText,
+                    height: 1.0,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

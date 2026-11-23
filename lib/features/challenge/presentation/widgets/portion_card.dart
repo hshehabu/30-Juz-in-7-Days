@@ -4,7 +4,9 @@ import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/reading_format.dart';
 import '../../domain/entities/day_portion.dart';
+import 'reading_plan.dart';
 
 class PortionCard extends StatelessWidget {
   final DayPortion portion;
@@ -12,12 +14,29 @@ class PortionCard extends StatelessWidget {
   final VoidCallback onMarkCompleted;
   final VoidCallback onUndoCompleted;
 
+  /// Ticks a part (0..4) of the day's reading plan. The plan is shown inline
+  /// only when this is provided.
+  final ValueChanged<int>? onTogglePart;
+
+  /// Opens the reading plan picker from the plan header.
+  final VoidCallback? onCustomizePlan;
+
+  /// Overrides the eyebrow label (e.g. "FIRST PORTION" before the start).
+  final String? eyebrow;
+
+  /// Whether the complete / undo button is shown.
+  final bool showCompletionAction;
+
   const PortionCard({
     super.key,
     required this.portion,
     required this.currentDayNumber,
     required this.onMarkCompleted,
     required this.onUndoCompleted,
+    this.onTogglePart,
+    this.onCustomizePlan,
+    this.eyebrow,
+    this.showCompletionAction = true,
   });
 
   @override
@@ -39,7 +58,7 @@ class PortionCard extends StatelessWidget {
           width: 1.0,
         ),
       ),
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -47,14 +66,17 @@ class PortionCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "${LocaleKeys.home.today_portion.tr()} • ${LocaleKeys.common.day_number.tr(args: [portion.dayNumber.toString()])}",
-                style: theme.textTheme.labelSmall?.copyWith(
-                  letterSpacing: 0.8,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  "${eyebrow ?? LocaleKeys.home.today_portion.tr()} • ${LocaleKeys.common.day_number.tr(args: [portion.dayNumber.toString()])}",
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 0.8,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -101,9 +123,42 @@ class PortionCard extends StatelessWidget {
                       fontStyle: FontStyle.normal,
                     ),
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+
+          // Size of the day's reading: pages and realistic time
+          Row(
+            children: [
+              const Icon(Icons.auto_stories_outlined,
+                  size: 15, color: AppColors.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  ReadingFormat.pagesAndTime(
+                      portion.pageCount, portion.estimatedMinutes),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.secondaryText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // Reading plan: five parts that double as the progress tracker
+          if (onTogglePart != null && !isCompleted) ...[
+            ReadingPlan(
+              portion: portion,
+              onToggle: onTogglePart,
+              onCustomize: onCustomizePlan,
+              boxed: false,
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Action button changes content and color in place without layout shift
+          if (showCompletionAction)
           SizedBox(
             width: double.infinity,
             height: 48,

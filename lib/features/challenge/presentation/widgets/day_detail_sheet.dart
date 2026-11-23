@@ -5,13 +5,38 @@ import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/reading_format.dart';
 import '../../domain/entities/day_portion.dart';
+import 'reading_plan.dart';
 
 class DayDetailSheet extends StatelessWidget {
   final DayPortion portion;
   final DateTime portionDate;
+
+  /// Current challenge day (0 before the start, >7 after the window).
   final int currentDayNumber;
+
+  /// Marks the portion complete, or undoes completion if already complete.
   final VoidCallback onToggleCompletion;
+
+  /// Whether today's portion may be marked complete from this sheet.
+  final bool canMarkToday;
+
+  /// Whether a missed past portion may be checked in late.
+  final bool allowLateCheckIn;
+
+  /// Whether a completed portion may be undone.
+  final bool allowUndo;
+
+  /// Day the portion's reading was moved into by a plan adjustment.
+  final int? rescheduledToDay;
+
+  /// Interactive reading plan (parts can be ticked). When null, a read-only
+  /// plan is shown instead.
+  final Widget? readingPlan;
+
+  /// Whether the reading plan section is shown at all (off in settings).
+  final bool showReadingPlan;
 
   const DayDetailSheet({
     super.key,
@@ -19,6 +44,12 @@ class DayDetailSheet extends StatelessWidget {
     required this.portionDate,
     required this.currentDayNumber,
     required this.onToggleCompletion,
+    this.canMarkToday = true,
+    this.allowLateCheckIn = false,
+    this.allowUndo = true,
+    this.rescheduledToDay,
+    this.readingPlan,
+    this.showReadingPlan = true,
   });
 
   static Future<void> show(
@@ -27,10 +58,17 @@ class DayDetailSheet extends StatelessWidget {
     required DateTime portionDate,
     required int currentDayNumber,
     required VoidCallback onToggleCompletion,
+    bool canMarkToday = true,
+    bool allowLateCheckIn = false,
+    bool allowUndo = true,
+    int? rescheduledToDay,
+    Widget? readingPlan,
+    bool showReadingPlan = true,
   }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.paper,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
@@ -40,6 +78,12 @@ class DayDetailSheet extends StatelessWidget {
         portionDate: portionDate,
         currentDayNumber: currentDayNumber,
         onToggleCompletion: onToggleCompletion,
+        canMarkToday: canMarkToday,
+        allowLateCheckIn: allowLateCheckIn,
+        allowUndo: allowUndo,
+        rescheduledToDay: rescheduledToDay,
+        readingPlan: readingPlan,
+        showReadingPlan: showReadingPlan,
       ),
     );
   }
@@ -48,6 +92,7 @@ class DayDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isAr = AppLanguage.isArabic(context);
+    final locale = context.locale.languageCode;
 
     final isCompleted = portion.isCompleted;
     final isToday = portion.dayNumber == currentDayNumber;
@@ -92,9 +137,7 @@ class DayDetailSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isCompleted
                         ? AppColors.secondaryNeutral
-                        : (isToday
-                            ? AppColors.ink
-                            : AppColors.controlSurface),
+                        : (isToday ? AppColors.ink : AppColors.controlSurface),
                     borderRadius: BorderRadius.circular(AppColors.standardRadius),
                     border: Border.all(
                       color: isCompleted || isToday
@@ -109,7 +152,7 @@ class DayDetailSheet extends StatelessWidget {
                             ? LocaleKeys.common.today.tr()
                             : (isMissed
                                 ? LocaleKeys.common.missed.tr()
-                                : AppDateUtils.formatShortDate(portionDate, context.locale.languageCode))),
+                                : AppDateUtils.formatShortDate(portionDate, locale))),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: isToday && !isCompleted
                           ? AppColors.buttonText
@@ -160,52 +203,104 @@ class DayDetailSheet extends StatelessWidget {
             const Divider(height: 18),
             _buildInfoRow(
               context,
-              label: isAr ? 'التاريخ المقرر' : 'Scheduled Date',
-              value: AppDateUtils.formatDate(portionDate, context.locale.languageCode),
+              label: LocaleKeys.day_detail.pages_label.tr(),
+              value:
+                  '${ReadingFormat.pages(portion.pageCount)} (${LocaleKeys.common.page_range.tr(args: [
+                        portion.startPage.toString(),
+                        portion.endPage.toString()
+                      ])})',
+            ),
+            const Divider(height: 18),
+            _buildInfoRow(
+              context,
+              label: LocaleKeys.day_detail.reading_time.tr(),
+              value: ReadingFormat.duration(portion.estimatedMinutes),
+            ),
+            const Divider(height: 18),
+            _buildInfoRow(
+              context,
+              label: LocaleKeys.day_detail.scheduled_date.tr(),
+              value: AppDateUtils.formatDate(portionDate, locale),
             ),
             if (portion.isCompleted && portion.completedAt != null) ...[
               const Divider(height: 18),
               _buildInfoRow(
                 context,
-                label: isAr ? 'تاريخ الإكمال' : 'Completed On',
-                value: AppDateUtils.formatDate(portion.completedAt!, context.locale.languageCode),
+                label: LocaleKeys.day_detail.completed_on.tr(),
+                value: AppDateUtils.formatDate(portion.completedAt!, locale),
               ),
             ],
             if (portion.isAdjusted) ...[
               const Divider(height: 18),
               _buildInfoRow(
                 context,
-                label: isAr ? 'حالة الحزب' : 'Schedule Status',
-                value: isAr ? 'مُعدل ليناسب الأيام المتبقية' : 'Adjusted to fit remaining window',
+                label: LocaleKeys.day_detail.schedule_status.tr(),
+                value: LocaleKeys.day_detail.adjusted_status.tr(),
               ),
             ],
-            // Action button (today only, or undo if completed)
-            if (isToday) ...[
-              const SizedBox(height: 24),
+            if (rescheduledToDay != null && !isCompleted) ...[
+              const Divider(height: 18),
+              _buildInfoRow(
+                context,
+                label: LocaleKeys.day_detail.schedule_status.tr(),
+                value: LocaleKeys.day_detail.rescheduled_to
+                    .tr(args: [rescheduledToDay.toString()]),
+              ),
+            ],
+
+            // One reading plan: the day split into five parts, which doubles as
+            // the tracker when the portion can be marked.
+            if (!isCompleted && showReadingPlan) ...[
+              const SizedBox(height: 22),
+              readingPlan ?? ReadingPlan(portion: portion),
+              const SizedBox(height: 6),
+              Text(
+                LocaleKeys.day_detail.page_note.tr(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+
+            // Action button (today, late check-in, or undo if completed)
+            if (isToday && !isCompleted && canMarkToday) ...[
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: isCompleted
-                    ? OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          onToggleCompletion();
-                        },
-                        icon: const Icon(Icons.undo_rounded, size: 16),
-                        label: Text(LocaleKeys.home.undo.tr()),
-                      )
-                    : ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          onToggleCompletion();
-                        },
-                        icon: const Icon(Icons.check_rounded, size: 18),
-                        label: Text(LocaleKeys.home.mark_as_completed.tr()),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onToggleCompletion();
+                  },
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: Text(LocaleKeys.home.mark_as_completed.tr()),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
               ),
-            ] else if (isCompleted) ...[
+            ] else if (isMissed && allowLateCheckIn) ...[
+              const SizedBox(height: 16),
+              Text(
+                LocaleKeys.day_detail.late_check_in_hint.tr(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onToggleCompletion();
+                  },
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: Text(LocaleKeys.day_detail.late_check_in.tr()),
+                ),
+              ),
+            ] else if (isCompleted && allowUndo) ...[
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

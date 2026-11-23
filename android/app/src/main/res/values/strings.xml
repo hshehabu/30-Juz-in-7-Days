@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">30 Juz\' in 7 Days</string>
+    <string name="widget_description">Today\'s portion, your progress and a quick "Mark done" button</string>
+    <string name="widget_open_app">Open the app to set up your khatmah</string>
+    <string name="widget_mark_done">Mark done</string>
+</resources>
