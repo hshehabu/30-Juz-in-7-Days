@@ -1,5 +1,5 @@
 name: thirty_juz_in_7_days
-description: "A new Flutter project."
+description: "Offline companion for completing the Qur'an in seven days: daily portions, reminders and progress tracking."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.12.2
@@ -39,6 +39,9 @@ dependencies:
   google_fonts: ^6.2.1
   intl: ^0.20.2
   easy_localization: ^3.0.8
+  share_plus: ^13.3.1
+  home_widget: ^0.10.0
+  file_picker: ^13.4.0
 
 dev_dependencies:
   flutter_test:

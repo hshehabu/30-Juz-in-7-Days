@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/khatmah_constants.dart';
 import '../../../../core/services/notification_service.dart';
@@ -29,17 +30,10 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     // If a later portion was adjusted (isAdjusted == true) and encompasses earlier
     // portions' blocks, those earlier portions were missed and rescheduled.
     // They must remain as missed historical records (isCompleted: false, completedAt: null).
-    final portions = challenge.portions;
     bool needsSanitize = false;
-    final sanitizedPortions = portions.map((p) {
-      final pBlocks = KhatmahConstants.getBlocksCovered(p.startSurah, p.endSurah);
-      final isRescheduledLater = portions.any((other) =>
-          other.dayNumber > p.dayNumber &&
-          other.isAdjusted &&
-          pBlocks.isNotEmpty &&
-          pBlocks.every(KhatmahConstants.getBlocksCovered(other.startSurah, other.endSurah).contains));
-
-      if (isRescheduledLater && (p.isCompleted || p.completedAt != null)) {
+    final sanitizedPortions = challenge.portions.map((p) {
+      if (challenge.rescheduledToDay(p) != null &&
+          (p.isCompleted || p.completedAt != null)) {
         needsSanitize = true;
         return p.copyWith(
           isCompleted: false,
@@ -50,15 +44,44 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     }).toList();
 
     if (needsSanitize) {
-      final updatedChallenge = ChallengeModel.fromEntity(challenge).copyWithModel(
-        portions: sanitizedPortions,
-        isCompleted: sanitizedPortions.every((p) => p.isCompleted),
+      final updatedChallenge = _withDerivedCompletion(
+        ChallengeModel.fromEntity(challenge).copyWithModel(
+          portions: sanitizedPortions,
+        ),
       );
       await localDataSource.saveActiveChallenge(updatedChallenge);
       return updatedChallenge;
     }
 
     return challenge;
+  }
+
+  // Decoded history, rebuilt only when storage reports a change.
+  List<Challenge>? _historyCache;
+  int _historyCacheRevision = -1;
+
+  @override
+  Future<List<Challenge>> getHistory() async {
+    final revision = storageService.historyRevision;
+    final cached = _historyCache;
+    if (cached != null && revision == _historyCacheRevision) return cached;
+
+    final result = <Challenge>[];
+    for (final raw in storageService.getHistoryJsonList()) {
+      try {
+        result.add(
+            ChallengeModel.fromJson(jsonDecode(raw) as Map<String, dynamic>));
+      } catch (_) {}
+    }
+    _historyCache = List.unmodifiable(result);
+    _historyCacheRevision = revision;
+    return _historyCache!;
+  }
+
+  /// Keeps the stored `isCompleted` flag in sync with the single derived
+  /// definition ([Challenge.isAllPortionsCompleted]).
+  ChallengeModel _withDerivedCompletion(ChallengeModel model) {
+    return model.copyWithModel(isCompleted: model.isAllPortionsCompleted);
   }
 
   @override
@@ -69,6 +92,7 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     final start = AppDateUtils.dateOnly(startDate);
     final end = start.add(const Duration(days: 6));
 
+    final planParts = storageService.readingPlanParts;
     final portions = KhatmahConstants.traditionalSchedule.map((data) {
       return DayPortion(
         dayNumber: data.dayNumber,
@@ -78,6 +102,7 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
         endSurahAr: data.endSurahAr,
         surahCount: data.surahCount,
         isCompleted: false,
+        partsCount: planParts > 0 ? planParts : DayPortion.defaultPartsCount,
       );
     }).toList();
 
@@ -96,17 +121,7 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
     await storageService.setReminderTime(reminderTime);
     await storageService.setOnboardingCompleted(true);
 
-    if (storageService.isReminderEnabled) {
-      try {
-        await notificationService.scheduleChallengeReminders(
-          startDate: start,
-          reminderTime: reminderTime,
-          schedule: KhatmahConstants.traditionalSchedule,
-        );
-      } catch (_) {
-        // Best-effort notification scheduling
-      }
-    }
+    await _scheduleFor(challenge);
 
     return challenge;
   }
@@ -118,9 +133,10 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       throw StateError('No active challenge found');
     }
 
+    final wasAllCompleted = current.isAllPortionsCompleted;
     final now = DateTime.now();
     final updatedPortions = current.portions.map((p) {
-      if (p.dayNumber == dayNumber) {
+      if (p.dayNumber == dayNumber && !p.isCompleted) {
         return p.copyWith(
           isCompleted: true,
           completedAt: now,
@@ -129,23 +145,17 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       return p;
     }).toList();
 
-    final tempChallenge = ChallengeModel.fromEntity(current).copyWithModel(
-      portions: updatedPortions,
-    );
-    final allCompleted = tempChallenge.isAllPortionsCompleted ||
-        updatedPortions.every((p) => p.isCompleted);
-
-    final updatedChallenge = tempChallenge.copyWithModel(
-      isCompleted: allCompleted,
+    final updatedChallenge = _withDerivedCompletion(
+      ChallengeModel.fromEntity(current).copyWithModel(portions: updatedPortions),
     );
 
     await localDataSource.saveActiveChallenge(updatedChallenge);
 
-    // Cancel notification for today's completed portion (best-effort)
+    // Cancel the day's reminder + follow-up (best-effort)
     try {
       await notificationService.cancelDayReminder(dayNumber);
 
-      if (allCompleted) {
+      if (updatedChallenge.isCompleted && !wasAllCompleted) {
         await notificationService.showCompletionNotification();
       }
     } catch (_) {
@@ -172,28 +182,83 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       return p;
     }).toList();
 
-    final updatedChallenge = ChallengeModel.fromEntity(current).copyWithModel(
-      portions: updatedPortions,
-      isCompleted: false,
+    final updatedChallenge = _withDerivedCompletion(
+      ChallengeModel.fromEntity(current).copyWithModel(portions: updatedPortions),
     );
 
+    await localDataSource.saveActiveChallenge(updatedChallenge);
+
+    // Restore the day's reminder (it was cancelled on completion).
+    await _scheduleFor(updatedChallenge);
+    return updatedChallenge;
+  }
+
+  @override
+  Future<Challenge> updateReadParts(int dayNumber, List<int> readParts) async {
+    final current = await localDataSource.getActiveChallenge();
+    if (current == null) {
+      throw StateError('No active challenge found');
+    }
+
+    final updatedPortions = current.portions.map((p) {
+      if (p.dayNumber == dayNumber) {
+        final count = p.parts.length;
+        final cleaned = readParts
+            .where((i) => i >= 0 && i < count)
+            .toSet()
+            .toList()
+          ..sort();
+        return p.copyWith(readParts: cleaned);
+      }
+      return p;
+    }).toList();
+
+    final updatedChallenge =
+        current.copyWithModel(portions: updatedPortions);
     await localDataSource.saveActiveChallenge(updatedChallenge);
     return updatedChallenge;
   }
 
-  List<DefaultPortionData> _portionsToScheduleData(List<DayPortion> portions) {
-    return portions.map((p) {
-      return DefaultPortionData(
-        dayNumber: p.dayNumber,
-        startSurah: p.startSurah,
-        endSurah: p.endSurah,
-        startSurahAr: p.startSurahAr,
-        endSurahAr: p.endSurahAr,
-        surahCount: p.surahCount,
-        startSurahIndex: KhatmahConstants.getBlockIndexByStartSurah(p.startSurah),
-        endSurahIndex: KhatmahConstants.getBlockIndexByEndSurah(p.endSurah),
-      );
-    }).toList();
+  @override
+  Future<Challenge?> setReadingPlanParts(int parts) async {
+    await storageService.setReadingPlanParts(parts);
+    final current = await localDataSource.getActiveChallenge();
+    if (current == null || parts < 1) return current;
+
+    // Only unfinished, non-customized days adopt the new default. Completed
+    // days keep the plan they were read with (and their ticks), and days
+    // given their own split keep it.
+    final updated = current.copyWithModel(
+      portions: current.portions
+          .map((p) =>
+              p.isCompleted || p.partsCustom ? p : p.withPartsCount(parts))
+          .toList(),
+    );
+    await localDataSource.saveActiveChallenge(updated);
+    return updated;
+  }
+
+  @override
+  Future<Challenge> setDayPartsCount(int dayNumber, int? parts) async {
+    final current = await localDataSource.getActiveChallenge();
+    if (current == null) {
+      throw StateError('No active challenge found');
+    }
+    final defaultParts = storageService.readingPlanParts > 0
+        ? storageService.readingPlanParts
+        : DayPortion.defaultPartsCount;
+
+    final updated = current.copyWithModel(
+      portions: current.portions.map((p) {
+        if (p.dayNumber != dayNumber || p.isCompleted) return p;
+        if (parts == null) {
+          return p.withPartsCount(defaultParts).copyWith(partsCustom: false);
+        }
+        return p.withPartsCount(parts).copyWith(partsCustom: true);
+      }).toList(),
+    );
+    await localDataSource.saveActiveChallenge(updated);
+    return updated;
   }
 
   @override
@@ -203,38 +268,29 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       throw StateError('No active challenge found');
     }
 
-    final updatedChallenge = current.copyWithModel(
-      portions: updatedPortions,
+    final updatedChallenge = _withDerivedCompletion(
+      current.copyWithModel(portions: updatedPortions),
     );
 
     await localDataSource.saveActiveChallenge(updatedChallenge);
-
-    if (storageService.isReminderEnabled && !updatedChallenge.isCompleted) {
-      try {
-        final completedDays = updatedChallenge.portions
-            .where((p) => p.isCompleted)
-            .map((p) => p.dayNumber)
-            .toSet();
-        await notificationService.scheduleChallengeReminders(
-          startDate: updatedChallenge.startDate,
-          reminderTime: updatedChallenge.reminderTime,
-          schedule: _portionsToScheduleData(updatedChallenge.portions),
-          completedDays: completedDays,
-        );
-      } catch (_) {
-        // Best-effort notification rescheduling
-      }
-    }
+    await _scheduleFor(updatedChallenge);
 
     return updatedChallenge;
   }
-
 
   @override
   Future<Challenge> restartCurrentChallenge() async {
     final current = await localDataSource.getActiveChallenge();
     if (current == null) {
       throw StateError('No active challenge found');
+    }
+
+    // Keep the previous attempt in history if any reading was recorded,
+    // so restarting never silently erases the user's past effort.
+    final hasProgress = current.portions
+        .any((p) => p.isCompleted || p.readParts.isNotEmpty);
+    if (hasProgress) {
+      await localDataSource.archiveCompletedChallenge(current);
     }
 
     final now = AppDateUtils.dateOnly(DateTime.now());
@@ -272,31 +328,79 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
       await localDataSource.saveActiveChallenge(updatedChallenge);
     }
 
-    if (enabled) {
-      try {
-        final active = current ?? await localDataSource.getActiveChallenge();
-        final completedDays = active != null
-            ? active.portions
-                .where((p) => p.isCompleted)
-                .map((p) => p.dayNumber)
-                .toSet()
-            : <int>{};
-        final schedule = active != null
-            ? _portionsToScheduleData(active.portions)
-            : KhatmahConstants.traditionalSchedule;
-        final startDate = active?.startDate ?? DateTime.now();
+    await refreshReminders();
+  }
 
-        await notificationService.scheduleChallengeReminders(
-          startDate: startDate,
-          reminderTime: reminderTime,
-          schedule: schedule,
-          completedDays: completedDays,
-        );
-      } catch (_) {}
-    } else {
+  @override
+  Future<void> updateFollowUpSettings({
+    required bool enabled,
+    required TimeOfDay followUpTime,
+  }) async {
+    await storageService.setFollowUpEnabled(enabled);
+    await storageService.setFollowUpTime(followUpTime);
+    await refreshReminders();
+  }
+
+  @override
+  Future<void> refreshReminders() async {
+    final active = await localDataSource.getActiveChallenge();
+    if (active == null) {
       try {
         await notificationService.cancelAll();
       } catch (_) {}
+      return;
     }
+    await _scheduleFor(active);
+  }
+
+  /// Schedules (or clears) reminders for [challenge] using current settings.
+  Future<void> _scheduleFor(Challenge challenge) async {
+    try {
+      if (!storageService.isReminderEnabled) {
+        await notificationService.cancelAll();
+        return;
+      }
+      final completedDays = challenge.portions
+          .where((p) => p.isCompleted)
+          .map((p) => p.dayNumber)
+          .toSet();
+      await notificationService.scheduleChallengeReminders(
+        startDate: challenge.startDate,
+        reminderTime: storageService.reminderTime,
+        schedule: _portionsToScheduleData(challenge.portions),
+        completedDays: completedDays,
+        followUpTime: storageService.isFollowUpEnabled
+            ? storageService.followUpTime
+            : null,
+        languageCode: storageService.languageCode,
+      );
+    } catch (_) {
+      // Best-effort notification scheduling
+    }
+  }
+
+  List<DefaultPortionData> _portionsToScheduleData(List<DayPortion> portions) {
+    return portions.map((p) {
+      return DefaultPortionData(
+        dayNumber: p.dayNumber,
+        startSurah: p.startSurah,
+        endSurah: p.endSurah,
+        startSurahAr: p.startSurahAr,
+        endSurahAr: p.endSurahAr,
+        surahCount: p.surahCount,
+        startSurahIndex: p.startSurahNumber,
+        endSurahIndex: p.endSurahNumber,
+      );
+    }).toList();
+  }
+
+  @override
+  String exportBackup() => storageService.exportBackup();
+
+  @override
+  Future<bool> importBackup(String raw) async {
+    final ok = await storageService.importBackup(raw);
+    if (ok) await refreshReminders();
+    return ok;
   }
 }

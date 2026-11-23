@@ -29,13 +29,19 @@ class ChallengeLocalDataSourceImpl implements ChallengeLocalDataSource {
   @override
   Future<void> saveActiveChallenge(ChallengeModel challenge) async {
     final rawJson = jsonEncode(challenge.toJson());
-    await _storageService.saveActiveChallengeJson(rawJson);
+    final saved = await _storageService.saveActiveChallengeJson(rawJson);
+    if (!saved) {
+      throw const StorageWriteException();
+    }
   }
 
   @override
   Future<void> archiveCompletedChallenge(ChallengeModel challenge) async {
     final rawJson = jsonEncode(challenge.toJson());
-    await _storageService.addCompletedToHistory(rawJson);
+    final archived = await _storageService.addCompletedToHistory(rawJson);
+    if (!archived) {
+      throw const StorageWriteException();
+    }
     await _storageService.clearActiveChallenge();
   }
 
@@ -43,4 +49,12 @@ class ChallengeLocalDataSourceImpl implements ChallengeLocalDataSource {
   Future<void> clearActiveChallenge() async {
     await _storageService.clearActiveChallenge();
   }
+}
+
+/// Thrown when progress could not be persisted to local storage.
+class StorageWriteException implements Exception {
+  const StorageWriteException();
+
+  @override
+  String toString() => 'StorageWriteException: progress could not be saved';
 }

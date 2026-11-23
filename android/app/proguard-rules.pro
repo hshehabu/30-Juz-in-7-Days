@@ -43,3 +43,7 @@
 # Preserve essential attributes for reflection, annotations, and debugging
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 
+
+# Home-screen widget (home_widget): background receiver/worker and provider
+-keep class es.antonborri.home_widget.** { *; }
+-keep class com.hshehabu.thirtyjuz.KhatmahWidgetProvider { *; }

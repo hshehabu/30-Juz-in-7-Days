@@ -19,6 +19,8 @@ class _RecordingNotificationService extends NotificationService {
     TimeOfDay reminderTime = const TimeOfDay(hour: 19, minute: 0),
     required List<DefaultPortionData> schedule,
     Set<int> completedDays = const {},
+    TimeOfDay? followUpTime,
+    String? languageCode,
   }) async {
     scheduleCallCount++;
     lastStartDate = startDate;
@@ -28,7 +30,7 @@ class _RecordingNotificationService extends NotificationService {
 }
 
 void main() {
-  test('updateReminderSettings schedules reminders even when no active challenge exists',
+  test('updateReminderSettings stores settings but schedules nothing without an active challenge',
       () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -49,8 +51,10 @@ void main() {
       reminderTime: newTime,
     );
 
-    expect(notifService.scheduleCallCount, 1);
-    expect(notifService.lastReminderTime, newTime);
+    // Without a challenge there is no portion to remind about, so nothing is
+    // scheduled (previously a phantom "Day 1" plan from today was created).
+    // The new time is stored and used as soon as a challenge starts.
+    expect(notifService.scheduleCallCount, 0);
     expect(storage.reminderTime, newTime);
     expect(storage.isReminderEnabled, isTrue);
   });

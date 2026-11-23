@@ -6,6 +6,7 @@ import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/widgets/app_confirmation_sheet.dart';
 import '../../../challenge/presentation/notifiers/challenge_providers.dart';
 
 class OnboardingFlowPage extends ConsumerStatefulWidget {
@@ -107,6 +108,24 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
     final notificationService = ref.read(notificationServiceProvider);
     await notificationService.requestPermissions();
 
+    // Exact alarms (Android 12+) open a system settings page, so explain why
+    // first and let the user decide instead of jumping there unannounced.
+    try {
+      if (!await notificationService.canScheduleExact() && mounted) {
+        final allow = await AppConfirmationSheet.show(
+          context,
+          title: LocaleKeys.permissions.explainer_title.tr(),
+          message: LocaleKeys.permissions.explainer_desc.tr(),
+          confirmLabel: LocaleKeys.permissions.open_settings.tr(),
+          cancelLabel: LocaleKeys.permissions.not_now.tr(),
+          icon: Icons.alarm_rounded,
+          iconColor: AppColors.dustyGreen,
+        );
+        if (allow) await notificationService.requestExactAlarmsPermission();
+      }
+    } catch (_) {}
+    if (!mounted) return;
+
     // Trigger completion callback first to pop the dialog gracefully
     // before the global loading state unmounts the navigation shell.
     widget.onCompleted();
@@ -156,8 +175,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                       ),
                       onPressed: _prevPage,
                       color: AppColors.ink,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                      tooltip: LocaleKeys.common.back.tr(),
                     )
                   else
                     const SizedBox(width: 18),
@@ -648,7 +666,7 @@ class _OnboardingFlowPageState extends ConsumerState<OnboardingFlowPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            LocaleKeys.onboarding.reminder_note.tr(),
+                            '${LocaleKeys.onboarding.reminder_note.tr()}\n${LocaleKeys.onboarding.permission_note.tr()}',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: AppColors.secondaryText,
                               height: 1.4,

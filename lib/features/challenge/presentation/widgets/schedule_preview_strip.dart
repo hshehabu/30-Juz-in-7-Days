@@ -61,7 +61,10 @@ class SchedulePreviewStrip extends StatelessWidget {
                 onTap: onViewAll,
                 borderRadius: BorderRadius.circular(AppColors.standardRadius),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -112,13 +115,18 @@ class SchedulePreviewStrip extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Flat clean progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppColors.standardRadius),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 6,
-              backgroundColor: AppColors.secondaryNeutral,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.ink),
+          Semantics(
+            label: LocaleKeys.a11y.percent_complete.tr(
+              args: [percentInt.toString()],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppColors.standardRadius),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 6,
+                backgroundColor: AppColors.secondaryNeutral,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.ink),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -176,37 +184,56 @@ class SchedulePreviewStrip extends StatelessWidget {
                 );
               }
 
-              return InkWell(
-                onTap: () => onSelectPortion(p),
-                borderRadius: BorderRadius.circular(AppColors.standardRadius),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius:
-                            BorderRadius.circular(AppColors.standardRadius),
-                        border: Border.all(color: borderColor, width: 1.0),
+              final statusLabel = isCompleted
+                  ? LocaleKeys.common.completed.tr()
+                  : (isToday
+                        ? LocaleKeys.common.today.tr()
+                        : (isPast
+                              ? LocaleKeys.common.missed.tr()
+                              : LocaleKeys.common.upcoming.tr()));
+
+              return Semantics(
+                button: true,
+                label: LocaleKeys.a11y.day_status.tr(
+                  args: [p.dayNumber.toString(), statusLabel],
+                ),
+                hint: LocaleKeys.a11y.show_details.tr(),
+                excludeSemantics: true,
+                child: InkWell(
+                  onTap: () => onSelectPortion(p),
+                  borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.standardRadius,
+                          ),
+                          border: Border.all(color: borderColor, width: 1.0),
+                        ),
+                        alignment: Alignment.center,
+                        child: iconOrNum,
                       ),
-                      alignment: Alignment.center,
-                      child: iconOrNum,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      LocaleKeys.common.day_number
-                          .tr(args: [p.dayNumber.toString()]),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
-                        fontWeight:
-                            isToday ? FontWeight.w700 : FontWeight.w400,
-                        color: isToday
-                            ? AppColors.signalBlack
-                            : AppColors.textMuted,
+                      const SizedBox(height: 6),
+                      Text(
+                        LocaleKeys.common.day_number.tr(
+                          args: [p.dayNumber.toString()],
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          fontWeight: isToday
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          color: isToday
+                              ? AppColors.signalBlack
+                              : AppColors.textMuted,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }).toList(),

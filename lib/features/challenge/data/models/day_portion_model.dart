@@ -11,6 +11,9 @@ class DayPortionModel extends DayPortion {
     super.isCompleted = false,
     super.completedAt,
     super.isAdjusted = false,
+    super.readParts = const [],
+    super.partsCount = DayPortion.defaultPartsCount,
+    super.partsCustom = false,
   });
 
   factory DayPortionModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +29,12 @@ class DayPortionModel extends DayPortion {
           ? DateTime.tryParse(json['completedAt'] as String)
           : null,
       isAdjusted: json['isAdjusted'] as bool? ?? false,
+      readParts: (json['readParts'] as List<dynamic>?)
+              ?.whereType<int>()
+              .toList() ??
+          const [],
+      partsCount: json['partsCount'] as int? ?? DayPortion.defaultPartsCount,
+      partsCustom: json['partsCustom'] as bool? ?? false,
     );
   }
 
@@ -40,6 +49,9 @@ class DayPortionModel extends DayPortion {
       'isCompleted': isCompleted,
       'completedAt': completedAt?.toIso8601String(),
       'isAdjusted': isAdjusted,
+      'readParts': readParts,
+      'partsCount': partsCount,
+      'partsCustom': partsCustom,
     };
   }
 
@@ -54,6 +66,9 @@ class DayPortionModel extends DayPortion {
       isCompleted: entity.isCompleted,
       completedAt: entity.completedAt,
       isAdjusted: entity.isAdjusted,
+      readParts: entity.readParts,
+      partsCount: entity.partsCount,
+      partsCustom: entity.partsCustom,
     );
   }
 }

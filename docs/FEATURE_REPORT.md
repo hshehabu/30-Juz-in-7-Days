@@ -1,8 +1,26 @@
 # Feature Report: 30 Juz' in 7 Days
 **Comprehensive Technical & Functional Specification — Production Release**  
-*Project Status: 100% Production Ready | Version: 1.0.0+1 | Last Updated: October 2026*
+*Version: 1.1.0+2 | Last Updated: November 2026 | Application ID: `com.hshehabu.thirtyjuz`*
 
 ---
+
+## What's New in 1.1.0
+
+- **Upcoming state**: a khatmah scheduled for a future date shows a "Starts in N days" card and a preview of Day 1, instead of a screen that looked like every day was missed.
+- **Localized notifications**: reminder text, the action button and the completion notice follow the app language (English / Arabic).
+- **Self-refreshing reminders**: reminders are re-planned on every launch and resume, on language and time-zone changes, and after an undo. A khatmah set to start weeks ahead gets its reminders on the right dates.
+- **Follow-up reminder** (optional): a second nudge later in the evening if the day's portion is still unread.
+- **Reading plan and tracker in one**: each day is split into five roughly equal parts, one per prayer. Ticking a part records where you stopped; ticking the last one completes the day (with undo). It appears inline on the Today card and in the day sheet, with no extra screens. The split has two levels: Settings → Reading plan sets the default for unfinished days (by prayer, 3 sittings, 2 sittings, or off), and the ⚙ on a day's plan sets that day only ("This day only"; "Use default" undoes it). Completed and individually set days are never changed by the default, and re-splitting keeps fully read pages ticked.
+- **Pages and realistic time**: each portion shows its page range in the 604-page Madani mushaf and an estimated reading time.
+- **Late check-in**: a missed day can still be marked as read (unless its reading was moved into a later day by a plan adjustment).
+- **Continuous khatmah** (optional): the next 7-day cycle starts automatically after one is finished.
+- **Backup and restore**: save progress as a small `.json` file through the share sheet (Drive, Telegram, email…) and restore it from a file or pasted text. A finished khatmah offers to save a backup. Progress is also included in Android's automatic Google backup (explicit backup rules) and restored on reinstall or a new phone.
+- **Storage resilience**: the last 3 good versions of the active khatmah are kept as rolling snapshots with automatic recovery; every saved record carries a schema version with a tested upgrade path; decoded history is cached until it changes.
+- **Reminder health**: Settings warns when notifications are blocked or exact alarms are not allowed, with a Fix button; exact-alarm access is explained before it is requested.
+- **Reliability**: failed saves are reported instead of silently ignored; Restart keeps the previous attempt in history; the Android back button exits from Home; the Settings countdown only ticks while visible and shows the reminder that is actually scheduled.
+- **Home-screen widget** (Android): today's portion, overall progress and a "Mark done" button that works without opening the app. Content is pre-computed per date so it rolls over at midnight on its own.
+- **Share**: share a "khatmah completed" message from the celebration dialog or the completed card.
+- **Release identity**: application ID `com.hshehabu.thirtyjuz`, release signing via `android/key.properties`, `INTERNET` and `USE_EXACT_ALARM` permissions removed.
 
 ## 1. Executive Summary & Religious Foundation
 
@@ -42,10 +60,10 @@ graph TD
 ### 2.1. Architectural Highlights
 - **100% Offline & Private**: Zero external servers, zero third-party telemetry, and zero mandatory user registration. All reading progress, schedule adjustments, and alarms live strictly on the device.
 - **Bilingual & RTL-Native**: Seamless real-time switching between English and Arabic (`easy_localization`). Dynamic layout mirroring, localized numerals, and authentic unvowelled Arabic Hadith text.
-- **Two-Step Journey Flow**: Clean mental separation between immediate daily focus (**Step 1: "What do I do now?"**) and high-level progress review (**Step 2: "Where am I in the plan?"**), featuring a monthly heatmap and expandable cycle cards.
+- **Two-Step Journey Flow**: Clean mental separation between immediate daily focus (**Step 1: "What do I do now?"**) and high-level progress review (**Step 2: "Where am I in the plan?"**), featuring lifetime stats, a month stepper and expandable cycle cards.
 - **Resilient Daily Notification Engine**: Battery-optimized, high-precision Android `AlarmManager` alarms (`exactAllowWhileIdle`) scheduled at the user's custom daily time. Instant dynamic rescheduling when changing times, Android 12–14 exact alarm permission prompts, self-healing timezone detection, an interactive in-notification *"Mark as completed"* button, and automated kill switches for completed portions.
 - **Dusty Green Aesthetic**: Calm, scholarly palette built with deep dusty greens (`#416757`), forest charcoal (`#1E2B25`), whisper-soft control surfaces (`#F3F7F5`), and custom mosque architectural illustrations.
-- **Air-Gapped Offline Typography**: Bundled local fonts (*Amiri*, *Cormorant Garamond*, *Outfit*) with runtime network fetching completely disabled for reliable air-gapped operation.
+- **Air-Gapped Offline Typography**: Bundled local fonts (*Amiri*, *Plus Jakarta Sans*, *Tajawal*) with runtime network fetching completely disabled for reliable air-gapped operation.
 - **Dual-Slot Storage Resilience**: Automated backup recovery slot (`active_khatmah_challenge_backup`) protecting user reading streaks from unexpected crashes or storage corruption.
 - **Optimized for Telegram Distribution**: Minimized APK footprint with ProGuard / R8 code shrinking, resource optimization, WebP compression, and strict reflection keep-rules for Gson and notifications.
 
@@ -63,7 +81,7 @@ graph TD
 | **Persistence** | `shared_preferences` | `^2.2.3` | Dual-slot resilient local key-value storage with JSON validation |
 | **Notification Engine** | `flutter_local_notifications` | `^18.0.1` | Absolute zoned alarms, action broadcast receivers, notification channels |
 | **Timezone Management** | `timezone`, `flutter_timezone` | `^0.10.0`, `^5.1.0` | Exact alarm scheduling with self-healing UTC offset synchronization |
-| **Typography** | Local font assets (`Amiri`, `Cormorant`, `Outfit`) | Offline Bundled | Scholarly Arabic calligraphy and crisp modern UI with zero network calls |
+| **Typography** | Local font assets (`Amiri`, `Plus Jakarta Sans`, `Tajawal`) | Offline Bundled | Scholarly Arabic calligraphy and crisp modern UI with zero network calls |
 | **Iconography & Graphics**| `flutter_launcher_icons`, Custom SVG/WebP | `^0.14.3` | Thematic launcher icons, mosque vectors, and status glyphs |
 | **Build Optimization** | ProGuard / R8, Gradle Kotlin DSL | Android Gradle Plugin 8.x | Code minification, resource shrinking, and reflection preservation |
 
@@ -125,7 +143,7 @@ lib/
 ---
 
 ### 4.3. Journey Screen — Two-Step Architecture
-*File: [`journey_page.dart`](file:///c:/Users/Admin/hamza/30-Juz-in-7-Days/lib/features/challenge/presentation/pages/journey_page.dart)*
+*File: [`progress_page.dart`](../lib/features/challenge/presentation/pages/progress_page.dart)*
 
 The Journey experience is divided into two distinct mental models:
 
@@ -136,10 +154,8 @@ The Journey experience is divided into two distinct mental models:
 - Fast access to view the full journey plan via the *"Full Plan"* card.
 
 #### Step 2: "Where am I in the plan?" (High-Level Overview)
-- **Monthly Cycle Heatmap (`MonthlyCycleHeatmap`)**:
-  - Displays a calendar grid showing all completed and active reading days across the month.
-  - Interactive **Month Stepper** (`<` Previous Month / Next Month `>`) with a quick "Jump to current month" button to inspect historical khatmahs and future schedules.
-  - Filter pills (**All**, **Completed**, **Active**) to isolate specific reading cycles.
+- **Lifetime Stats**: khatmahs completed, share of portions read on their scheduled day, and average days to finish.
+- **Month Stepper** (`<` Previous Month / Next Month `>`) with a quick "Jump to current month" button to inspect historical khatmahs and future schedules.
 - **Expandable Cycle Cards (`ExpandableCycleCard`)**:
   - Groups portions by 7-day khatmah cycles.
   - Tapping expands the card downward with smooth micro-animations, revealing all 7 portions with their status badges, dates, and Surah ranges.
@@ -241,8 +257,8 @@ The Journey experience is divided into two distinct mental models:
   - **Terracotta (`#B85D43`)**: Muted warning and destructive action indicator.
 - **Air-Gapped Offline Typography**:
   - *Amiri*: Classical Arabic calligraphy.
-  - *Cormorant Garamond*: Scholarly headings and Surah names.
-  - *Outfit*: Clean, modern body and UI numerals.
+  - *Plus Jakarta Sans*: Clean, modern Latin body text and UI numerals.
+  - *Tajawal*: Arabic UI text.
   - All font files are bundled directly in `assets/google_fonts/` with runtime web fetching completely disabled.
 
 ---
@@ -289,11 +305,9 @@ The Journey experience is divided into two distinct mental models:
 
 ### 6.1. Android Manifest Permissions
 ```xml
-<uses-permission android:name="android.permission.INTERNET"/>
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-<uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 <uses-permission android:name="android.permission.WAKE_LOCK"/>
 <uses-permission android:name="android.permission.VIBRATE"/>
 ```
@@ -340,7 +354,6 @@ No issues found! (ran in 52.3s)
 | `localization_coverage_test.dart` | Translation key completeness across English and Arabic dictionaries | PASS |
 | `localization_test.dart` | Live language switching without tab reload, RTL text directionality | PASS |
 | `master_daily_reminder_test.dart` | Daily recurring reminder scheduling and expired challenge handling | PASS |
-| `monthly_cycle_heatmap_test.dart` | Heatmap rendering, month stepper navigation, and cycle legends | PASS |
 | `notification_action_test.dart` | Headless background notification action execution and storage update | PASS |
 | `offline_bundled_fonts_test.dart` | Air-gapped bundled font loading with runtime network fetching disabled | PASS |
 | `onboarding_overflow_test.dart` | Narrow-screen layout overflow prevention during onboarding setup | PASS |
@@ -356,6 +369,6 @@ No issues found! (ran in 52.3s)
 
 ## 8. Summary & Release Readiness
 
-The **30 Juz' in 7 Days** application is **feature-complete, robustly tested, and 100% production-ready**. 
+The **30 Juz' in 7 Days** application is feature-complete for its pacing, tracking and reminder scope, with an automated test suite covering the core logic.
 
 All core capabilities—from onboarding setup, daily reading pacing, two-step journey tracking, and bilingual RTL support to resilient background notification alarms, ProGuard shrinking, and air-gapped typography—have been engineered, verified, and polished to the highest quality standards.

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,16 +6,15 @@ import '../../../../core/localization/locale_keys.g.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_utils.dart';
-import '../../../../core/widgets/app_confirmation_sheet.dart';
-import '../../../../core/widgets/countdown_undo_toast.dart';
-import '../../data/models/challenge_model.dart';
+import '../../../../core/utils/reading_format.dart';
 import '../../domain/entities/challenge.dart';
 import '../../domain/entities/day_portion.dart';
 import '../notifiers/challenge_notifier.dart';
 import '../notifiers/challenge_providers.dart';
 import '../widgets/circular_progress_badge.dart';
-import '../widgets/day_detail_sheet.dart';
+import '../widgets/lifetime_stats_card.dart';
 import '../widgets/mosque_silhouette_painter.dart';
+import '../widgets/portion_actions.dart';
 
 enum DayStatus { completed, today, upcoming, missed }
 
@@ -30,11 +28,16 @@ class ProgressPage extends ConsumerStatefulWidget {
   final VoidCallback? onBackToHome;
   final JourneyStep initialStep;
 
+  /// Whether this tab is visible. Back-button interception is only active
+  /// while it is, so it never traps the user on other tabs.
+  final bool isCurrentTab;
+
   const ProgressPage({
     super.key,
     required this.onStartNewKhatmah,
     this.onBackToHome,
     this.initialStep = JourneyStep.whatDoIDoNow,
+    this.isCurrentTab = true,
   });
 
   @override
@@ -85,82 +88,16 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
     });
   }
 
-  int _getEstimatedMinutes(int dayNumber) {
-    switch (dayNumber) {
-      case 1:
-        return 15;
-      case 2:
-        return 25;
-      case 3:
-        return 35;
-      case 4:
-        return 40;
-      case 5:
-        return 30;
-      case 6:
-        return 30;
-      case 7:
-        return 25;
-      default:
-        return 25;
-    }
-  }
-
   void _openPortionDetail(
     BuildContext context,
     DayPortion portion,
-    DateTime portionDate,
     Challenge targetChallenge,
-    ChallengeNotifier notifier,
   ) {
-    final currentDay = targetChallenge.currentDayNumber;
-    DayDetailSheet.show(
+    PortionActions.showDetail(
       context,
+      ref,
+      challenge: targetChallenge,
       portion: portion,
-      portionDate: portionDate,
-      currentDayNumber: targetChallenge.isActive ? currentDay : 8,
-      onToggleCompletion: () async {
-        if (!targetChallenge.isActive) return;
-        if (portion.isCompleted) {
-          final confirmed = await AppConfirmationSheet.show(
-            context,
-            title: LocaleKeys.confirmation.undo_title.tr(),
-            message: LocaleKeys.confirmation.undo_desc.tr(),
-            confirmLabel: LocaleKeys.confirmation.undo_confirm.tr(),
-            cancelLabel: LocaleKeys.common.cancel.tr(),
-            isDestructive: true,
-            icon: Icons.undo_rounded,
-          );
-          if (confirmed) {
-            await notifier.undoDayCompletion(portion.dayNumber);
-          }
-        } else {
-          final confirmed = await AppConfirmationSheet.show(
-            context,
-            title: LocaleKeys.confirmation.mark_completed_title.tr(),
-            message: LocaleKeys.confirmation.mark_completed_desc.tr(
-              args: [portion.dayNumber.toString()],
-            ),
-            confirmLabel: LocaleKeys.confirmation.mark_completed_confirm.tr(),
-            cancelLabel: LocaleKeys.common.cancel.tr(),
-            icon: Icons.check_circle_outline_rounded,
-            iconColor: AppColors.dustyGreen,
-          );
-          if (confirmed && context.mounted) {
-            await notifier.markDayCompleted(portion.dayNumber);
-            if (!context.mounted) return;
-            CountdownUndoToast.show(
-              context,
-              message:
-                  '${LocaleKeys.common.alhamdulillah.tr()} • ${LocaleKeys.common.day_number.tr(args: [portion.dayNumber.toString()])} ${LocaleKeys.common.completed.tr()}',
-              undoLabel: LocaleKeys.confirmation.undo_action.tr(),
-              onUndo: () {
-                notifier.undoDayCompletion(portion.dayNumber);
-              },
-            );
-          }
-        }
-      },
     );
   }
 
@@ -173,18 +110,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
     final isAr = AppLanguage.isArabic(context);
     final locale = context.locale.languageCode;
 
-    // Retrieve historical challenges from storage safely
-    final historyChallenges = <Challenge>[];
-    try {
-      final storageService = ref.watch(storageServiceProvider);
-      final historyJsons = storageService.getHistoryJsonList();
-      for (final j in historyJsons) {
-        try {
-          final map = jsonDecode(j) as Map<String, dynamic>;
-          historyChallenges.add(ChallengeModel.fromJson(map));
-        } catch (_) {}
-      }
-    } catch (_) {}
+    final historyChallenges = state.history;
 
     final challengeMap = <String, Challenge>{};
     if (challenge != null) {
@@ -226,11 +152,12 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
     final activeCycle = challenge ?? allChallenges.first;
     final currentDay = activeCycle.currentDayNumber;
     final completedCount = activeCycle.completedPortionsCount;
-    final isFinished = challenge != null &&
+    final isFinished =
+        challenge != null &&
         (challenge.isAllPortionsCompleted || challenge.isExpired);
 
     return PopScope(
-      canPop: false,
+      canPop: !widget.isCurrentTab,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (_currentStep == JourneyStep.whereAmIInThePlan) {
@@ -352,26 +279,31 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
         actions: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 18),
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _currentStep = JourneyStep.whereAmIInThePlan;
-                });
-              },
-              borderRadius: BorderRadius.circular(AppColors.standardRadius),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.paper,
-                  borderRadius: BorderRadius.circular(AppColors.standardRadius),
-                  border: Border.all(color: AppColors.mistGray),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppColors.signalBlack,
-                  size: 20,
+            child: Tooltip(
+              message: LocaleKeys.progress.plan_details.tr(),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _currentStep = JourneyStep.whereAmIInThePlan;
+                  });
+                },
+                borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.paper,
+                    borderRadius: BorderRadius.circular(
+                      AppColors.standardRadius,
+                    ),
+                    border: Border.all(color: AppColors.mistGray),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.calendar_view_month_rounded,
+                    color: AppColors.signalBlack,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
@@ -469,11 +401,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFFAF7EE),
-                Color(0xFFF4EFE3),
-                Color(0xFFEFF5F1),
-              ],
+              colors: [Color(0xFFFAF7EE), Color(0xFFF4EFE3), Color(0xFFEFF5F1)],
             ),
             borderRadius: BorderRadius.circular(AppColors.standardRadius),
             border: Border.all(color: const Color(0xFFE4DDD0)),
@@ -515,7 +443,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                LocaleKeys.progress.greeting_assalamu_alaikum.tr(),
+                                LocaleKeys.progress.greeting_assalamu_alaikum
+                                    .tr(),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -542,7 +471,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                               _currentStep = JourneyStep.whereAmIInThePlan;
                             });
                           },
-                          borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.standardRadius,
+                          ),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -550,7 +481,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.paper.withValues(alpha: 0.95),
-                              borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                              borderRadius: BorderRadius.circular(
+                                AppColors.standardRadius,
+                              ),
                               border: Border.all(
                                 color: const Color(0xFFC3D8CE),
                               ),
@@ -594,14 +527,17 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                           _currentStep = JourneyStep.whereAmIInThePlan;
                         });
                       },
-                      borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                      borderRadius: BorderRadius.circular(
+                        AppColors.standardRadius,
+                      ),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: AppColors.paper,
-                          borderRadius:
-                              BorderRadius.circular(AppColors.standardRadius),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.standardRadius,
+                          ),
                           border: Border.all(color: AppColors.mistGray),
                         ),
                         child: Row(
@@ -610,7 +546,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                             CircularProgressBadge(
                               completed: completedCount,
                               total: 7,
-                              sublabel: LocaleKeys.common.today.tr(),
+                              sublabel: LocaleKeys.progress.stat_portions.tr(),
                               size: 70,
                               strokeWidth: 6.0,
                               progressColor: AppColors.dustyGreenDark,
@@ -653,7 +589,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                                         child: Text(
                                           challenge.isAllPortionsCompleted
                                               ? LocaleKeys.common.completed.tr()
-                                              : LocaleKeys.progress.in_progress.tr(),
+                                              : LocaleKeys.progress.in_progress
+                                                    .tr(),
                                           style: const TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
@@ -687,8 +624,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                                           AppColors.secondaryNeutral,
                                       valueColor:
                                           const AlwaysStoppedAnimation<Color>(
-                                        AppColors.dustyGreenDark,
-                                      ),
+                                            AppColors.dustyGreenDark,
+                                          ),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
@@ -696,12 +633,21 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                                   // Days remaining label
                                   Text(
                                     daysRemaining > 1
-                                        ? LocaleKeys.progress.days_remaining_count.tr(
-                                            args: [daysRemaining.toString()],
-                                          )
+                                        ? LocaleKeys
+                                              .progress
+                                              .days_remaining_count
+                                              .tr(
+                                                args: [
+                                                  daysRemaining.toString(),
+                                                ],
+                                              )
                                         : (daysRemaining == 1
-                                            ? LocaleKeys.progress.day_remaining_single.tr()
-                                            : LocaleKeys.progress.ends_today.tr()),
+                                              ? LocaleKeys
+                                                    .progress
+                                                    .day_remaining_single
+                                                    .tr()
+                                              : LocaleKeys.progress.ends_today
+                                                    .tr()),
                                     style: const TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w500,
@@ -776,7 +722,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
               isAr: isAr,
               locale: locale,
               onTap: () {
-                _openPortionDetail(context, portion, portionDate, challenge, notifier);
+                _openPortionDetail(context, portion, challenge);
               },
             );
           },
@@ -849,7 +795,10 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                 // Icon / Status indicator
                 if (isToday)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(3),
@@ -884,10 +833,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                     height: 18,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.mistGray,
-                        width: 1.5,
-                      ),
+                      border: Border.all(color: AppColors.mistGray, width: 1.5),
                     ),
                   ),
               ],
@@ -995,8 +941,6 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
       );
     }
 
-    final estimatedMinutes = _getEstimatedMinutes(portion.dayNumber);
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppColors.standardRadius),
@@ -1005,10 +949,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppColors.standardRadius),
-          border: Border.all(
-            color: borderColor,
-            width: borderWidth,
-          ),
+          border: Border.all(color: borderColor, width: borderWidth),
         ),
         child: Row(
           children: [
@@ -1021,14 +962,14 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                 color: isToday
                     ? AppColors.dustyGreenDark
                     : (isCompleted
-                        ? const Color(0xFFEAF2EE)
-                        : const Color(0xFFF5F8F6)),
+                          ? const Color(0xFFEAF2EE)
+                          : const Color(0xFFF5F8F6)),
                 border: Border.all(
                   color: isToday
                       ? AppColors.dustyGreenDark
                       : (isCompleted
-                          ? const Color(0xFFBCCDC5)
-                          : AppColors.mistGray),
+                            ? const Color(0xFFBCCDC5)
+                            : AppColors.mistGray),
                 ),
               ),
               alignment: Alignment.center,
@@ -1040,8 +981,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                   color: isToday
                       ? Colors.white
                       : (isCompleted
-                          ? AppColors.dustyGreenDark
-                          : AppColors.signalBlack),
+                            ? AppColors.dustyGreenDark
+                            : AppColors.signalBlack),
                 ),
               ),
             ),
@@ -1072,7 +1013,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${portion.surahCount} ${LocaleKeys.common.surahs.tr()} • ~ $estimatedMinutes ${isAr ? 'د' : 'min'}',
+                    '${LocaleKeys.common.surah_count.tr(args: [portion.surahCount.toString()])} • ${ReadingFormat.pagesAndTime(portion.pageCount, portion.estimatedMinutes)}',
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w400,
@@ -1128,7 +1069,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
       final start = c.startDate;
       final end = c.endDate;
       final isStartInMonth =
-          start.year == _selectedMonth.year && start.month == _selectedMonth.month;
+          start.year == _selectedMonth.year &&
+          start.month == _selectedMonth.month;
       final isEndInMonth =
           end.year == _selectedMonth.year && end.month == _selectedMonth.month;
       return isStartInMonth || isEndInMonth;
@@ -1139,6 +1081,10 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── LIFETIME STATS ──────────────────────────────────────────────────
+        LifetimeStatsCard(challenges: allChallenges),
+        const SizedBox(height: 16),
+
         // ── MONTH SELECTOR ──────────────────────────────────────────────────
         Container(
           width: double.infinity,
@@ -1153,10 +1099,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
               // Previous month
               IconButton(
                 key: const Key('journey_prev_month_button'),
-                icon: const Icon(
-                  Icons.chevron_left_rounded,
-                  size: 22,
-                ),
+                icon: const Icon(Icons.chevron_left_rounded, size: 22),
                 color: AppColors.signalBlack,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -1179,7 +1122,11 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                       : () {
                           final nowTime = DateTime.now();
                           setState(() {
-                            _selectedMonth = DateTime(nowTime.year, nowTime.month, 1);
+                            _selectedMonth = DateTime(
+                              nowTime.year,
+                              nowTime.month,
+                              1,
+                            );
                             _expandedCycleIds.clear();
                           });
                         },
@@ -1195,7 +1142,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                           color: AppColors.signalBlack,
                         ),
                       ),
-                      if (!isCurrentMonth) ...[                      
+                      if (!isCurrentMonth) ...[
                         const SizedBox(height: 2),
                         Text(
                           LocaleKeys.progress.today_jump.tr(),
@@ -1214,10 +1161,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
               // Next month
               IconButton(
                 key: const Key('journey_next_month_button'),
-                icon: const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 22,
-                ),
+                icon: const Icon(Icons.chevron_right_rounded, size: 22),
                 color: AppColors.signalBlack,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -1238,7 +1182,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
         const SizedBox(height: 16),
 
         // ── CYCLES LIST or EMPTY STATE ───────────────────────────────────────
-        if (monthChallenges.isEmpty) ...[          
+        if (monthChallenges.isEmpty) ...[
           // Clean Empty State
           Container(
             width: double.infinity,
@@ -1253,7 +1197,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
               children: [
                 Text(
                   LocaleKeys.progress.no_cycles_month.tr(
-                    args: [AppDateUtils.formatMonthYear(_selectedMonth, locale)],
+                    args: [
+                      AppDateUtils.formatMonthYear(_selectedMonth, locale),
+                    ],
                   ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -1288,7 +1234,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
             ),
           ),
           const SizedBox(height: 24),
-        ] else ...[          
+        ] else ...[
           // Expandable Cycle Cards
           ListView.separated(
             shrinkWrap: true,
@@ -1335,8 +1281,8 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
     final String completionText = cycle.isAllPortionsCompleted
         ? LocaleKeys.common.completed.tr()
         : cycle.isActive
-            ? LocaleKeys.progress.in_progress.tr()
-            : '$cycleCompletedCount / 7 ${LocaleKeys.common.completed.tr()}';
+        ? LocaleKeys.progress.in_progress.tr()
+        : '$cycleCompletedCount / 7 ${LocaleKeys.common.completed.tr()}';
 
     return Container(
       width: double.infinity,
@@ -1368,7 +1314,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                       color: isExpanded
                           ? AppColors.dustyGreen
                           : AppColors.controlSurface,
-                      borderRadius: BorderRadius.circular(AppColors.standardRadius),
+                      borderRadius: BorderRadius.circular(
+                        AppColors.standardRadius,
+                      ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -1376,7 +1324,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isExpanded ? Colors.white : AppColors.secondaryText,
+                        color: isExpanded
+                            ? Colors.white
+                            : AppColors.secondaryText,
                       ),
                     ),
                   ),
@@ -1387,7 +1337,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          LocaleKeys.progress.cycle_label.tr(args: [cycleNumber.toString()]),
+                          LocaleKeys.progress.cycle_label.tr(
+                            args: [cycleNumber.toString()],
+                          ),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -1443,15 +1395,24 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Divider(height: 1, thickness: 1, color: AppColors.secondaryNeutral),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: AppColors.secondaryNeutral,
+                      ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         child: ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: cycle.portions.length,
-                          separatorBuilder: (_, _) =>
-                              const Divider(height: 1, color: AppColors.secondaryNeutral),
+                          separatorBuilder: (_, _) => const Divider(
+                            height: 1,
+                            color: AppColors.secondaryNeutral,
+                          ),
                           itemBuilder: (context, idx) {
                             final portion = cycle.portions[idx];
                             final portionDate = cycle.startDate.add(
@@ -1478,13 +1439,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                               isAr: isAr,
                               locale: locale,
                               onTap: () {
-                                _openPortionDetail(
-                                  context,
-                                  portion,
-                                  portionDate,
-                                  cycle,
-                                  notifier,
-                                );
+                                _openPortionDetail(context, portion, cycle);
                               },
                             );
                           },
@@ -1551,7 +1506,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: isMissed ? AppColors.secondaryText.withValues(alpha: 0.4) : AppColors.mistGray,
+            color: isMissed
+                ? AppColors.secondaryText.withValues(alpha: 0.4)
+                : AppColors.mistGray,
             width: 1.5,
           ),
         ),
@@ -1586,7 +1543,9 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: isMissed ? AppColors.secondaryText : AppColors.signalBlack,
+                  color: isMissed
+                      ? AppColors.secondaryText
+                      : AppColors.signalBlack,
                   fontFamily: isAr ? 'Tajawal' : null,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1652,10 +1611,7 @@ class ProgressPageState extends ConsumerState<ProgressPage> {
             challenge.isAllPortionsCompleted
                 ? LocaleKeys.completion_dialog.title.tr()
                 : LocaleKeys.progress.concluded_banner_title.tr(),
-            style: AppTypography.appBarTitle(
-              AppColors.signalBlack,
-              isAr,
-            ),
+            style: AppTypography.appBarTitle(AppColors.signalBlack, isAr),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),

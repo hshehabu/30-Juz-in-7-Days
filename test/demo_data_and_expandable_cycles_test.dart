@@ -53,45 +53,51 @@ void main() {
     testWidgets(
         'Step 2 places month stepper at top, renders cycle cards, and expands downward on tap',
         (tester) async {
+      // Dates are relative to "now" so the test does not depend on the
+      // calendar month it runs in.
+      final now = DateTime.now();
+      DateTime monthDay(int monthOffset, int day) =>
+          DateTime(now.year, now.month + monthOffset, day);
+
       final activeChallenge = Challenge(
-        id: 'active_october_cycle',
-        startDate: DateTime(2026, 10, 12),
-        endDate: DateTime(2026, 10, 18),
+        id: 'active_current_month_cycle',
+        startDate: monthDay(0, 12),
+        endDate: monthDay(0, 18),
         portions: createPortions(completedDays: 3),
         reminderHour: 19,
         reminderMinute: 0,
-        createdAt: DateTime(2026, 10, 12),
+        createdAt: monthDay(0, 12),
       );
 
       final pastChallenges = [
         // Completed earlier in October
         ChallengeModel(
           id: 'past_oct_1',
-          startDate: DateTime(2026, 10, 1),
-          endDate: DateTime(2026, 10, 7),
+          startDate: monthDay(0, 1),
+          endDate: monthDay(0, 7),
           portions: createPortionModels(completedDays: 7),
           reminderHour: 19,
           reminderMinute: 0,
-          createdAt: DateTime(2026, 10, 1),
+          createdAt: monthDay(0, 1),
         ),
         // September cycles
         ChallengeModel(
           id: 'past_sep_1',
-          startDate: DateTime(2026, 9, 1),
-          endDate: DateTime(2026, 9, 7),
+          startDate: monthDay(-1, 1),
+          endDate: monthDay(-1, 7),
           portions: createPortionModels(completedDays: 7),
           reminderHour: 19,
           reminderMinute: 0,
-          createdAt: DateTime(2026, 9, 1),
+          createdAt: monthDay(-1, 1),
         ),
         ChallengeModel(
           id: 'past_sep_2',
-          startDate: DateTime(2026, 9, 10),
-          endDate: DateTime(2026, 9, 16),
+          startDate: monthDay(-1, 10),
+          endDate: monthDay(-1, 16),
           portions: createPortionModels(completedDays: 7),
           reminderHour: 19,
           reminderMinute: 0,
-          createdAt: DateTime(2026, 9, 10),
+          createdAt: monthDay(-1, 10),
         ),
       ];
 
@@ -112,7 +118,9 @@ void main() {
                   ChallengeState(
                     isLoading: false,
                     challenge: activeChallenge,
+                    history: pastChallenges,
                     hasCompletedOnboarding: true,
+                    isInitialized: true,
                   ),
                 ),
               ),
