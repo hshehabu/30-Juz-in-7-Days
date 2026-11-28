@@ -39,6 +39,23 @@ void main() {
   });
 
   group('Home widget payload', () {
+    test('each date carries a 7-day strip: read, shown day, not yet', () async {
+      final start = DateTime.now().subtract(const Duration(days: 2));
+      final payload = await HomeWidgetService.buildPayload(
+          _challenge(start, completedDays: 1), 'en');
+      final dates = payload['dates'] as Map<String, dynamic>;
+      final day3 = dates[_key(DateTime.now())] as Map<String, dynamic>;
+      expect(day3['days'], 'cutuuuu');
+      expect(day3['rtl'], isFalse);
+      expect((payload['before'] as Map)['days'], 'cuuuuuu');
+    });
+
+    test('completed khatmah fills the whole strip', () async {
+      final payload = await HomeWidgetService.buildPayload(
+          _challenge(DateTime.now(), completedDays: 7), 'en');
+      expect((payload['after'] as Map)['days'], 'ccccccc');
+    });
+
     test('has an entry for every challenge date with a Mark done action', () async {
       final today = DateTime.now();
       final payload = await HomeWidgetService.buildPayload(_challenge(today), 'en');
@@ -60,7 +77,8 @@ void main() {
           .first as Map<String, dynamic>;
       expect(entry['header'], 'اليوم 1 من ٧');
       expect(entry['range'], 'البقرة ← النساء');
-      expect(entry['markLabel'], 'تمت القراءة');
+      expect(entry['markLabel'], contains('تمت القراءة'));
+      expect(entry['rtl'], isTrue);
     });
 
     test('completed khatmah shows the completed state, no button', () async {

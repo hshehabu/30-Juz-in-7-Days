@@ -65,7 +65,7 @@ class _WidgetCopy {
   static const en = _WidgetCopy(
     dayOfSeven: 'Day {d} of 7',
     readToday: 'Read today ✓',
-    markDone: 'Mark done',
+    markDone: '✓  Mark done',
     beginsSoon: 'Your khatmah begins soon',
     startsOn: 'Starts {date}',
     completedTitle: 'Khatmah completed',
@@ -83,7 +83,7 @@ class _WidgetCopy {
   static const ar = _WidgetCopy(
     dayOfSeven: 'اليوم {d} من ٧',
     readToday: 'تمت قراءة ورد اليوم ✓',
-    markDone: 'تمت القراءة',
+    markDone: '✓  تمت القراءة',
     beginsSoon: 'ختمتك تبدأ قريباً',
     startsOn: 'تبدأ في {date}',
     completedTitle: 'اكتملت الختمة',
@@ -176,8 +176,11 @@ class HomeWidgetService {
       String progressLabel = '',
       bool canMark = false,
       int day = 0,
+      String days = '',
     }) =>
         {
+          'days': days,
+          'rtl': isAr,
           'header': header,
           'range': range,
           'detail': detail,
@@ -212,6 +215,7 @@ class HomeWidgetService {
       detail: '',
       progress: 100,
       progressLabel: '7/7',
+      days: 'c' * challenge.portions.length,
     );
 
     String detailFor(DayPortion p) {
@@ -223,6 +227,14 @@ class HomeWidgetService {
           .replaceAll('{p}', '${p.pageCount}')
           .replaceAll('{t}', copy.duration(p.estimatedMinutes));
     }
+
+    /// One status per day for the widget strip: c = read, t = the day shown,
+    /// u = not read yet.
+    String daysFor(int shownDay) => challenge.portions
+        .map((q) => q.isCompleted
+            ? 'c'
+            : (q.dayNumber == shownDay ? 't' : 'u'))
+        .join();
 
     final dates = <String, dynamic>{};
     for (final p in challenge.portions) {
@@ -239,6 +251,7 @@ class HomeWidgetService {
         progressLabel: progressLabel,
         canMark: !p.isCompleted,
         day: p.dayNumber,
+        days: daysFor(p.dayNumber),
       );
     }
 
@@ -260,6 +273,7 @@ class HomeWidgetService {
         header: copy.beginsSoon,
         range: isAr ? first.rangeDisplayAr : first.rangeDisplay,
         detail: copy.startsOn.replaceAll('{date}', startLabel),
+        days: daysFor(0),
       ),
       'after': challenge.isAllPortionsCompleted
           ? completedEntry
@@ -269,6 +283,7 @@ class HomeWidgetService {
               detail: '',
               progress: percent,
               progressLabel: progressLabel,
+              days: daysFor(0),
             ),
     };
   }

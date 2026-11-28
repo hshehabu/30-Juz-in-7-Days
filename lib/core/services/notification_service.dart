@@ -10,6 +10,8 @@ import '../localization/notification_copy.dart';
 import 'reminder_planner.dart';
 import 'storage_service.dart';
 
+/// Handles the legacy "Mark as completed" button on reminders posted by an
+/// older build. New reminders have no buttons.
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse response) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +38,6 @@ class ReminderPermissionStatus {
 
 class NotificationService {
   static const String markCompletedActionId = 'mark_completed';
-  static const String _iosCategoryId = 'khatmah_reminder_category';
   static const int completionNotificationId = 777;
   static const String _channelId = 'khatmah_reminders_v5';
 
@@ -67,27 +68,13 @@ class NotificationService {
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    final darwinSettings = DarwinInitializationSettings(
+    const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
-      notificationCategories: [
-        DarwinNotificationCategory(
-          _iosCategoryId,
-          actions: [
-            DarwinNotificationAction.plain(
-              markCompletedActionId,
-              _copy.markCompletedAction,
-              options: {
-                DarwinNotificationActionOption.foreground,
-              },
-            ),
-          ],
-        ),
-      ],
     );
 
-    final initSettings = InitializationSettings(
+    const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: darwinSettings,
     );
@@ -126,7 +113,9 @@ class NotificationService {
         ?.createNotificationChannel(androidChannel);
   }
 
-  /// A "Mark as completed" tap while the app process is alive. Exactly one
+  /// Reminders no longer show a "Mark as completed" button; this only serves
+  /// notifications posted by an older build that are still in the shade.
+  /// A tap while the app process is alive. Exactly one
   /// writer persists the change: the app's notifier when it is registered,
   /// otherwise the standalone storage path.
   Future<void> _handleForegroundResponse(NotificationResponse response) async {
@@ -319,7 +308,6 @@ class NotificationService {
             body: copy.habitBody,
             scheduledDate: scheduledDate,
             payload: 'daily',
-            withAction: false,
           );
       }
     }
@@ -332,9 +320,8 @@ class NotificationService {
     required String body,
     required tz.TZDateTime scheduledDate,
     String? payload,
-    bool withAction = true,
   }) async {
-    final details = _buildNotificationDetails(withAction: withAction);
+    final details = _buildNotificationDetails();
     final canExact = await canScheduleExact();
     final scheduleMode = canExact
         ? AndroidScheduleMode.exactAllowWhileIdle
@@ -478,7 +465,9 @@ class NotificationService {
 
   // ── Private helpers ─────────────────────────────────────────────────────────
 
-  NotificationDetails _buildNotificationDetails({bool withAction = true}) {
+  /// Reminders carry no action buttons: reading is marked done in the app
+  /// (or from the home-screen widget). Tapping a reminder opens the app.
+  NotificationDetails _buildNotificationDetails() {
     final copy = _copy;
     return NotificationDetails(
       android: AndroidNotificationDetails(
@@ -492,21 +481,8 @@ class NotificationService {
         enableVibration: true,
         visibility: NotificationVisibility.public,
         category: AndroidNotificationCategory.reminder,
-        actions: withAction
-            ? <AndroidNotificationAction>[
-                AndroidNotificationAction(
-                  markCompletedActionId,
-                  copy.markCompletedAction,
-                  showsUserInterface: true,
-                  cancelNotification: true,
-                ),
-              ]
-            : null,
       ),
-      iOS: DarwinNotificationDetails(
-        sound: 'default',
-        categoryIdentifier: withAction ? _iosCategoryId : null,
-      ),
+      iOS: const DarwinNotificationDetails(sound: 'default'),
     );
   }
 }

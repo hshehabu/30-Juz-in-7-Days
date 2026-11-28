@@ -7,6 +7,7 @@
 
     <application
         android:label="30 Juz' in 7 Days"
+        android:supportsRtl="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"

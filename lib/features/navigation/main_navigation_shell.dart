@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/localization/locale_keys.g.dart';
-import '../../core/theme/app_colors.dart';
+import 'floating_nav_bar.dart';
 import '../challenge/presentation/pages/home_page.dart';
 import '../challenge/presentation/pages/progress_page.dart';
 import '../onboarding/presentation/pages/onboarding_flow_page.dart';
@@ -63,7 +63,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   Widget build(BuildContext context) {
     // Explicitly read context.locale so this stateful shell registers a dependency
     // on the active locale. When the user switches language in Settings, this shell
-    // immediately rebuilds its BottomNavigationBar with the new localized labels and direction.
+    // immediately rebuilds its navigation bar with the new localized labels and direction.
     final currentLocale = context.locale;
 
     final pages = [
@@ -95,35 +95,24 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         index: _currentIndex,
         children: pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.paper,
-          border: Border(
-            top: BorderSide(color: AppColors.secondaryNeutral, width: 1),
+      bottomNavigationBar: FloatingNavBar(
+        key: ValueKey('bottom_nav_${currentLocale.languageCode}'),
+        currentIndex: _currentIndex,
+        onTap: _navigateToTab,
+        items: [
+          FloatingNavItem(
+            icon: Icons.menu_book_rounded,
+            label: LocaleKeys.navigation.today.tr(context: context),
           ),
-        ),
-        child: BottomNavigationBar(
-          key: ValueKey('bottom_nav_${currentLocale.languageCode}'),
-          currentIndex: _currentIndex,
-          onTap: _navigateToTab,
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.menu_book_rounded),
-              activeIcon: const Icon(Icons.menu_book_rounded),
-              label: LocaleKeys.navigation.today.tr(context: context),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.timeline_rounded),
-              activeIcon: const Icon(Icons.timeline_rounded),
-              label: LocaleKeys.navigation.journey.tr(context: context),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.tune_rounded),
-              activeIcon: const Icon(Icons.tune_rounded),
-              label: LocaleKeys.navigation.settings.tr(context: context),
-            ),
-          ],
-        ),
+          FloatingNavItem(
+            icon: Icons.timeline_rounded,
+            label: LocaleKeys.navigation.journey.tr(context: context),
+          ),
+          FloatingNavItem(
+            icon: Icons.tune_rounded,
+            label: LocaleKeys.navigation.settings.tr(context: context),
+          ),
+        ],
       ),
     ),
     );

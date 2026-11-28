@@ -278,7 +278,6 @@ void main() {
     test('Arabic notifications use Arabic text and ranges', () {
       final copy = NotificationCopy.of('ar');
       expect(copy.portionBody(3, 'يونس ← النحل'), 'اليوم 3: يونس ← النحل');
-      expect(copy.markCompletedAction, isNot('Mark as completed'));
       expect(NotificationCopy.of('en').portionTitle, contains('Portion'));
     });
   });

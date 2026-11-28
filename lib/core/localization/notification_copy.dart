@@ -1,13 +1,12 @@
 /// Localized notification text.
 ///
-/// Notifications are scheduled outside the widget tree (and the action button
-/// may be handled in a background isolate), so `easy_localization` lookups
+/// Notifications are scheduled outside the widget tree (and completion may be
+/// recorded from a background isolate), so `easy_localization` lookups
 /// are not available there. This small table mirrors the app languages.
 class NotificationCopy {
   final String languageCode;
   final String portionTitle;
   final String portionBodyTemplate;
-  final String markCompletedAction;
   final String followUpTitle;
   final String followUpBodyTemplate;
   final String habitTitle;
@@ -21,7 +20,6 @@ class NotificationCopy {
     required this.languageCode,
     required this.portionTitle,
     required this.portionBodyTemplate,
-    required this.markCompletedAction,
     required this.followUpTitle,
     required this.followUpBodyTemplate,
     required this.habitTitle,
@@ -38,7 +36,6 @@ class NotificationCopy {
     languageCode: 'en',
     portionTitle: 'Daily Qur\'an Portion 📖',
     portionBodyTemplate: 'Day {day}: {range}',
-    markCompletedAction: 'Mark as completed',
     followUpTitle: 'Still time to read today 🌙',
     followUpBodyTemplate: 'Day {day} is still waiting: {range}',
     habitTitle: 'Daily Qur\'an Reminder 📖',
@@ -53,7 +50,6 @@ class NotificationCopy {
     languageCode: 'ar',
     portionTitle: 'ورد اليوم من القرآن 📖',
     portionBodyTemplate: 'اليوم {day}: {range}',
-    markCompletedAction: 'تمت القراءة',
     followUpTitle: 'ما زال هناك وقت للقراءة اليوم 🌙',
     followUpBodyTemplate: 'ورد اليوم {day} بانتظارك: {range}',
     habitTitle: 'تذكير القراءة اليومية 📖',

@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_name">٣٠ جزءاً في ٧ أيام</string>
-    <string name="widget_description">ورد اليوم وتقدمك وزر سريع لتسجيل القراءة</string>
+    <string name="widget_description">ورد اليوم وتقدمك في الأيام السبعة وزر سريع لتسجيل القراءة</string>
     <string name="widget_open_app">افتح التطبيق لإعداد ختمتك</string>
-    <string name="widget_mark_done">تمت القراءة</string>
+    <string name="widget_mark_done">✓  تمت القراءة</string>
+    <string name="widget_preview_header">اليوم ٣ من ٧</string>
+    <string name="widget_preview_range">يونس ← النحل</string>
+    <string name="widget_preview_detail">74 صفحة • ~1 س 51 د</string>
 </resources>

@@ -15,8 +15,8 @@ import java.util.Locale
 import org.json.JSONObject
 
 /**
- * Home-screen widget showing today's portion, overall progress and a
- * "Mark done" button. The Flutter side pre-computes localized content for every
+ * Home-screen widget showing today's portion, a 7-day progress strip and a
+ * "Mark done" pill. The Flutter side pre-computes localized content for every
  * date of the khatmah, so this provider only picks the entry for today and the
  * widget rolls over at midnight without the app running.
  */
@@ -34,7 +34,7 @@ class KhatmahWidgetProvider : HomeWidgetProvider() {
       val views =
           RemoteViews(context.packageName, R.layout.khatmah_widget).apply {
             setOnClickPendingIntent(
-                R.id.widget_root,
+                android.R.id.background,
                 HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java),
             )
 
@@ -51,12 +51,38 @@ class KhatmahWidgetProvider : HomeWidgetProvider() {
             setTextViewText(R.id.widget_detail, detail)
             setViewVisibility(R.id.widget_detail, if (detail.isBlank()) View.GONE else View.VISIBLE)
 
+            // Follow the app language, not the device locale.
+            setInt(
+                android.R.id.background,
+                "setLayoutDirection",
+                if (entry.optBoolean("rtl", false)) View.LAYOUT_DIRECTION_RTL
+                else View.LAYOUT_DIRECTION_LTR,
+            )
+
             val progressLabel = entry.optString("progressLabel")
-            val showProgress = progressLabel.isNotBlank()
             setTextViewText(R.id.widget_progress_label, progressLabel)
-            setViewVisibility(R.id.widget_progress_label, if (showProgress) View.VISIBLE else View.GONE)
-            setProgressBar(R.id.widget_progress, 100, entry.optInt("progress", 0), false)
-            setViewVisibility(R.id.widget_progress, if (showProgress) View.VISIBLE else View.GONE)
+            setViewVisibility(
+                R.id.widget_progress_label,
+                if (progressLabel.isBlank()) View.GONE else View.VISIBLE,
+            )
+
+            // One segment per day: c = read, t = today, anything else = not yet.
+            val days = entry.optString("days")
+            if (days.length == SEGMENT_IDS.size) {
+              setViewVisibility(R.id.widget_segments, View.VISIBLE)
+              SEGMENT_IDS.forEachIndexed { i, id ->
+                setImageViewResource(
+                    id,
+                    when (days[i]) {
+                      'c' -> R.drawable.widget_segment_done
+                      't' -> R.drawable.widget_segment_today
+                      else -> R.drawable.widget_segment_pending
+                    },
+                )
+              }
+            } else {
+              setViewVisibility(R.id.widget_segments, View.INVISIBLE)
+            }
 
             val day = entry.optInt("day", 0)
             if (entry.optBoolean("canMark", false) && day > 0) {
@@ -83,6 +109,17 @@ class KhatmahWidgetProvider : HomeWidgetProvider() {
 
   companion object {
     private const val DATA_KEY = "khatmah_widget"
+
+    private val SEGMENT_IDS =
+        intArrayOf(
+            R.id.widget_seg_1,
+            R.id.widget_seg_2,
+            R.id.widget_seg_3,
+            R.id.widget_seg_4,
+            R.id.widget_seg_5,
+            R.id.widget_seg_6,
+            R.id.widget_seg_7,
+        )
 
     /** Picks today's entry, or the before/after state outside the 7 days. */
     fun currentEntry(raw: String?): JSONObject {

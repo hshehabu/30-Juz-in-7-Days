@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_name">30 Juz\' in 7 Days</string>
-    <string name="widget_description">Today\'s portion, your progress and a quick "Mark done" button</string>
+    <string name="widget_description">Today\'s portion, your 7-day progress and a quick "Mark done" button</string>
     <string name="widget_open_app">Open the app to set up your khatmah</string>
-    <string name="widget_mark_done">Mark done</string>
+    <string name="widget_mark_done">✓  Mark done</string>
+    <string name="widget_preview_header">Day 3 of 7</string>
+    <string name="widget_preview_range">Yunus → An-Nahl</string>
+    <string name="widget_preview_detail">74 pages • ~1h 51m</string>
 </resources>
